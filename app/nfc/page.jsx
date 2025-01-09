@@ -106,9 +106,12 @@ export default function NFCReader() {
       <div className="max-w-2xl mx-auto bg-white/80 backdrop-blur rounded-xl shadow-lg">
         <div className="p-6">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Lector NFC Profesional
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              VisitTech NFC
             </h1>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              Lector NFC Profesional
+            </h2>
             <p className="text-gray-600">
               Sistema de lectura de alta precisión
             </p>

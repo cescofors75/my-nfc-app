@@ -43,30 +43,37 @@ export default function NFCReader() {
   const [nfcData, setNfcData] = useState(null);
   const [error, setError] = useState(null);
   const [scanTime, setScanTime] = useState(null); // Tiempo de escaneo en milisegundos
+  const [isScanning, setIsScanning] = useState(false); // Para controlar el escaneo
+  const [expandedRecord, setExpandedRecord] = useState(null); // Controlar el acordeón de detalles del payload
 
   const formatUID = (uid) => {
     return uid.toUpperCase().split(':').join(' : ');
   };
 
   const readNFC = async () => {
+    if (isScanning) return; // Si ya está escaneando, no hacer nada más.
+    
+    setIsScanning(true); // Activar el escaneo
+    setStatus('scanning');
+    setError(null);
+    setNfcData(null);
+
     try {
       if (!('NDEFReader' in window)) {
         setError('NFC no soportado en este dispositivo');
         setStatus('error');
+        setIsScanning(false);
         return;
       }
 
       const startTime = Date.now();
-      setStatus('scanning');
-      setError(null);
-      setNfcData(null);
 
       const ndef = new NDEFReader();
       await ndef.scan();
 
       ndef.onreading = (event) => {
         const endTime = Date.now();
-        setScanTime(endTime - startTime); // Tiempo en milisegundos
+        setScanTime(endTime - startTime); // Tiempo de escaneo en milisegundos
 
         const { serialNumber, message: ndefMessage } = event;
         
@@ -85,27 +92,34 @@ export default function NFCReader() {
 
         setNfcData(nfcInfo);
         setStatus('success');
+        setIsScanning(false); // Detener el escaneo después de leer
       };
 
       ndef.onreadingerror = () => {
         setError('Error al leer la tarjeta');
         setStatus('error');
+        setIsScanning(false); // Detener el escaneo en caso de error
       };
 
     } catch (error) {
       setError(error.message);
       setStatus('error');
+      setIsScanning(false); // Detener el escaneo en caso de error
     }
   };
 
   useEffect(() => {
     if (status === 'success' || status === 'error') {
       const timer = setTimeout(() => {
-        readNFC();
+        setStatus('idle'); // Reiniciar el estado después de unos segundos
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, [status]);
+
+  const toggleRecordDetails = (recordId) => {
+    setExpandedRecord((prev) => (prev === recordId ? null : recordId));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-8 font-sans">
@@ -113,7 +127,7 @@ export default function NFCReader() {
         <div className="p-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              VisitTech NFC
+              VisitTech WaterWorld
             </h1>
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Lector NFC Profesional
@@ -145,12 +159,6 @@ export default function NFCReader() {
                 <p className="text-sm text-gray-600">
                   Acerque la tarjeta al lector
                 </p>
-                <button
-                  onClick={() => setStatus('idle')}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors mt-4"
-                >
-                  Pausar Escaneo
-                </button>
               </div>
             )}
           </div>
@@ -192,9 +200,15 @@ export default function NFCReader() {
                         <span className="text-gray-600">Lenguaje</span>
                         <span className="font-medium">{record.lang}</span>
                         <span className="text-gray-600">Payload</span>
-                        <span className="font-medium text-sm text-gray-500">
-                          {record.data}
-                        </span>
+                        <button
+                          onClick={() => toggleRecordDetails(record.id)}
+                          className="text-blue-600 text-sm mt-2"
+                        >
+                          {expandedRecord === record.id ? 'Ocultar Detalles' : 'Ver Detalles'}
+                        </button>
+                        {expandedRecord === record.id && (
+                          <pre className="mt-2 text-sm text-gray-600">{record.data}</pre>
+                        )}
                       </div>
                     </div>
                   ))}

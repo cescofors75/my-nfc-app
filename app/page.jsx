@@ -9,7 +9,7 @@ export default function HomePage() {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    wsRef.current = new WebSocket('ws://localhost:3001/api/socket');
+    wsRef.current = new WebSocket('ws://visittech-nfc.vercel.app/api/socket');
     wsRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
 

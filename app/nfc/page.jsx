@@ -117,10 +117,7 @@ export default function NFCReader() {
 
   useEffect(() => {
     if (status === 'success' || status === 'error') {
-      const timer = setTimeout(() => {
-        setStatus('idle'); // Reiniciar el estado después de unos segundos
-      }, 3000);
-      return () => clearTimeout(timer);
+      // Eliminamos el temporizador que hace desaparecer los resultados automáticamente
     }
   }, [status]);
 

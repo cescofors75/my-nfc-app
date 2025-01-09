@@ -108,6 +108,13 @@ export default function NFCReader() {
     }
   };
 
+  const reActivateScan = () => {
+    setStatus('idle');
+    setNfcData(null);
+    setScanTime(null);
+    setError(null);
+  };
+
   useEffect(() => {
     if (status === 'success' || status === 'error') {
       const timer = setTimeout(() => {
@@ -127,7 +134,7 @@ export default function NFCReader() {
         <div className="p-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              VisitTech WaterWorld
+              VisitTech NFC
             </h1>
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Lector NFC Profesional
@@ -149,7 +156,7 @@ export default function NFCReader() {
                 Iniciar Lectura
               </button>
             )}
-            
+
             {status === 'scanning' && (
               <div className="flex flex-col items-center text-blue-600">
                 <div className="mb-2">
@@ -160,6 +167,16 @@ export default function NFCReader() {
                   Acerque la tarjeta al lector
                 </p>
               </div>
+            )}
+
+            {status === 'success' && (
+              <button
+                onClick={reActivateScan}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg
+                          hover:bg-blue-700 transition-colors mt-4 flex items-center gap-2"
+              >
+                Reactivar Búsqueda
+              </button>
             )}
           </div>
 

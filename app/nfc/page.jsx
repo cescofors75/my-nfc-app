@@ -10,21 +10,20 @@ export default function NFCPage() {
 
         ndef.onreading = (event) => {
           const data = event.message.records.map((record) => {
-            // Verificar el tipo de los datos
+            // Verificar si los datos son un ArrayBuffer
             if (record.data instanceof ArrayBuffer) {
-              // Si el dato es un ArrayBuffer, lo decodificamos
               const decoder = new TextDecoder();
               return decoder.decode(record.data);
             } else if (record.data instanceof Uint8Array) {
-              // Si el dato es un Uint8Array, lo convertimos a un ArrayBuffer
+              // Si es un Uint8Array, lo convertimos a ArrayBuffer
               const decoder = new TextDecoder();
               return decoder.decode(record.data.buffer);
-            } else if (record.data instanceof DOMString) {
-              // Si el dato es una cadena de texto, lo devolvemos tal cual
+            } else if (typeof record.data === 'string') {
+              // Si es una cadena de texto (string), la usamos directamente
               return record.data;
             } else {
               console.error('Tipo de dato no manejado:', record.data);
-              return null; // Si el dato no es de un tipo conocido, lo ignoramos
+              return null; // Si no es un tipo esperado, lo ignoramos
             }
           }).filter((item) => item !== null); // Elimina valores null
 

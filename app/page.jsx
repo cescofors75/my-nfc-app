@@ -2,63 +2,58 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export default function NFCPage() {
-  const [uid, setUid] = useState('');
-  const [saldo, setSaldo] = useState(0);
-  const [transacciones, setTransacciones] = useState([]);
+export default function HomePage() {
+  const [messages, setMessages] = useState([]);
   const wsRef = useRef(null);
 
+  // Conectar al WebSocket
   useEffect(() => {
-    const wsUrl =
-      process.env.NODE_ENV === 'production'
-        ? `wss://${window.location.host}/api/socket`
-        : 'ws://localhost:3000/api/socket';
-
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onopen = () => console.log('Conexión WebSocket abierta');
-
+    wsRef.current = new WebSocket('ws://localhost:3000/api/socket');
+    wsRef.current.onopen = () => console.log('Conectado al servidor WebSocket');
     wsRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.action === 'respuesta') {
-        console.log('Respuesta del servidor:', data.message);
-      }
-
-      if (data.action === 'info' || data.action === 'actualizacion') {
-        setUid(data.uid);
-        setSaldo(data.data.saldo);
-        setTransacciones(data.data.transacciones);
-      }
-
-      if (data.action === 'error') alert(data.message);
+      setMessages((prev) => [...prev, JSON.parse(event.data)]);
     };
-
     wsRef.current.onclose = () => console.log('Conexión WebSocket cerrada');
-
     return () => wsRef.current.close();
   }, []);
 
+  // Leer NFC
+  const handleReadNFC = async () => {
+    try {
+      const ndef = new NDEFReader();
+      await ndef.scan();
+      console.log('Escaneo NFC iniciado. Esperando pulsera...');
+
+      ndef.onreading = (event) => {
+        const record = event.message.records[0];
+        const textDecoder = new TextDecoder();
+        const data = textDecoder.decode(record.data);
+
+        console.log('Datos NFC leídos:', data);
+
+        // Enviar al WebSocket
+        wsRef.current.send(
+          JSON.stringify({
+            uid: data,
+            action: 'cargar',
+            amount: 100,
+            timestamp: new Date().toISOString(),
+          })
+        );
+      };
+    } catch (error) {
+      console.error('Error al leer NFC:', error);
+    }
+  };
+
   return (
     <div>
-      <h1>Gestión de Pulseras NFC</h1>
-      <button onClick={() => wsRef.current.send(JSON.stringify({ action: 'leer' }))}>
-        Leer Pulsera NFC
-      </button>
-      <button onClick={() => wsRef.current.send(JSON.stringify({ action: 'cargar', monto: 50 }))}>
-        Cargar 50€
-      </button>
-      <button onClick={() => wsRef.current.send(JSON.stringify({ action: 'gastar', monto: 20 }))}>
-        Gastar 20€
-      </button>
-      <h2>UID: {uid}</h2>
-      <h2>Saldo: {saldo}€</h2>
-      <h3>Transacciones:</h3>
+      <h1>WebSocket & NFC Demo</h1>
+      <button onClick={handleReadNFC}>Leer Pulsera NFC</button>
+      <h2>Mensajes recibidos:</h2>
       <ul>
-        {transacciones.map((tx, index) => (
-          <li key={index}>
-            {tx.tipo}: {tx.monto}€
-          </li>
+        {messages.map((msg, index) => (
+          <li key={index}>{JSON.stringify(msg)}</li>
         ))}
       </ul>
     </div>

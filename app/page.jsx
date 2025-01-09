@@ -1,61 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+
 
 export default function HomePage() {
-  const [messages, setMessages] = useState([]);
-  const wsRef = useRef(null);
-
-  // Conectar al WebSocket
-  useEffect(() => {
-    wsRef.current = new WebSocket('ws://localhost:3000/api/socket');
-    wsRef.current.onopen = () => console.log('Conectado al servidor WebSocket');
-    wsRef.current.onmessage = (event) => {
-      setMessages((prev) => [...prev, JSON.parse(event.data)]);
-    };
-    wsRef.current.onclose = () => console.log('Conexión WebSocket cerrada');
-    return () => wsRef.current.close();
-  }, []);
-
-  // Leer NFC
-  const handleReadNFC = async () => {
-    try {
-      const ndef = new NDEFReader();
-      await ndef.scan();
-      console.log('Escaneo NFC iniciado. Esperando pulsera...');
-
-      ndef.onreading = (event) => {
-        const record = event.message.records[0];
-        const textDecoder = new TextDecoder();
-        const data = textDecoder.decode(record.data);
-
-        console.log('Datos NFC leídos:', data);
-
-        // Enviar al WebSocket
-        wsRef.current.send(
-          JSON.stringify({
-            uid: data,
-            action: 'cargar',
-            amount: 100,
-            timestamp: new Date().toISOString(),
-          })
-        );
-      };
-    } catch (error) {
-      console.error('Error al leer NFC:', error);
-    }
-  };
+  
 
   return (
-    <div>
-      <h1>WebSocket & NFC Demo</h1>
-      <button onClick={handleReadNFC}>Leer Pulsera NFC</button>
-      <h2>Mensajes recibidos:</h2>
-      <ul>
-        {messages.map((msg, index) => (
-          <li key={index}>{JSON.stringify(msg)}</li>
-        ))}
-      </ul>
-    </div>
+    <div style={{ fontFamily: 'Arial, sans-serif', textAlign: 'center', margin: '20px' }}>
+    <header style={{ backgroundColor: '#4CAF50', color: 'white', padding: '10px 0' }}>
+      <h1 style={{ fontSize: '2.5rem', margin: 0 }}>VisitTech NFC Demo</h1>
+      <p style={{ fontSize: '1.2rem', margin: 0 }}>Innovación en tecnología NFC para negocios</p>
+    </header>
+    <main style={{ marginTop: '30px' }}>
+      <section>
+        <p style={{ fontSize: '1.1rem', lineHeight: '1.6', maxWidth: '600px', margin: '0 auto' }}>
+          Explore cómo la tecnología NFC puede revolucionar la experiencia de sus clientes
+          ofreciendo servicios rápidos, seguros y personalizados. Esta demostración muestra
+          cómo gestionar información de pulseras NFC de manera eficiente.
+        </p>
+      </section>
+ 
+    </main>
+    <footer style={{ marginTop: '50px', fontSize: '0.9rem', color: '#666' }}>
+      <p>© 2025 VisitTech. Todos los derechos reservados.</p>
+    </footer>
+  </div>
   );
 }

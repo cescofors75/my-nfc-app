@@ -168,7 +168,7 @@ export default function NFCReader() {
 
             {status === 'success' && (
               <button
-                onClick={reActivateScan}
+                onClick={readNFC} // Reemplazar por reActivateScan
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg
                           hover:bg-blue-700 transition-colors mt-4 flex items-center gap-2"
               >

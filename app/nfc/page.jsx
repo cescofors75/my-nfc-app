@@ -1,6 +1,5 @@
 
 'use client';
-
 export default function NFCPage() {
   const readNFC = async () => {
     try {
@@ -11,13 +10,21 @@ export default function NFCPage() {
 
         ndef.onreading = (event) => {
           const data = event.message.records.map((record) => {
-            // Verifica si el dato es un ArrayBuffer antes de intentar decodificarlo
+            // Verificar el tipo de los datos
             if (record.data instanceof ArrayBuffer) {
+              // Si el dato es un ArrayBuffer, lo decodificamos
               const decoder = new TextDecoder();
               return decoder.decode(record.data);
+            } else if (record.data instanceof Uint8Array) {
+              // Si el dato es un Uint8Array, lo convertimos a un ArrayBuffer
+              const decoder = new TextDecoder();
+              return decoder.decode(record.data.buffer);
+            } else if (record.data instanceof DOMString) {
+              // Si el dato es una cadena de texto, lo devolvemos tal cual
+              return record.data;
             } else {
-              console.error('El registro no contiene un ArrayBuffer');
-              return null; // O alguna acción apropiada
+              console.error('Tipo de dato no manejado:', record.data);
+              return null; // Si el dato no es de un tipo conocido, lo ignoramos
             }
           }).filter((item) => item !== null); // Elimina valores null
 
@@ -58,5 +65,6 @@ export default function NFCPage() {
     </div>
   );
 }
+
 
   

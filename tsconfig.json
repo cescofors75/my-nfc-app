@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/nfc/page.jsx", "app/page.jsx", "next.config.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/nfc/page.jsx", "app/page.jsx", "next.config.ts", "app/wristbands/page.js"],
   "exclude": ["node_modules"]
 }

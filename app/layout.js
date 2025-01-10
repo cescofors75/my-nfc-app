@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import './globals.css'
 import { Providers } from './providers'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -23,18 +24,16 @@ export default function RootLayout({children }) {
                     VisitTech NFC
                   </h1>
                   <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                    <a
-                      href="/"
-                      className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      Dashboard
-                    </a>
-                    <a
-                      href="/wristbands/assign"
-                      className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      Asignar Pulsera
-                    </a>
+                    <Link href="/">
+                      <a className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                        Dashboard
+                      </a>
+                    </Link>
+                    <Link href="/wristbands/assign">
+                      <a className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                        Asignar Pulsera
+                      </a>
+                    </Link>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">

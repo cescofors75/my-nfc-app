@@ -24,15 +24,15 @@ export default function RootLayout({children }) {
                     VisitTech NFC
                   </h1>
                   <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                    <Link href="/">
-                      <a className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                    <Link href="/"
+                      className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                         Dashboard
-                      </a>
+                      
                     </Link>
-                    <Link href="/wristbands/assign">
-                      <a className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                    <Link href="/wristbands/assign"
+                       className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                         Asignar Pulsera
-                      </a>
+                      
                     </Link>
                   </div>
                 </div>

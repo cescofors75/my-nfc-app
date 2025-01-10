@@ -1,21 +1,66 @@
+/* app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 255 255 255;
+    --foreground: 15 23 42;
+  }
+
+  .dark {
+    --background: 15 23 42;
+    --foreground: 241 245 249;
   }
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
+}
+
+/* Clases de utilidad personalizadas */
+@layer components {
+  .card {
+    @apply  dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .card-header {
+    @apply p-6 border-b border-gray-200 dark:border-gray-700;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .card-footer {
+    @apply p-6 border-t border-gray-200 dark:border-gray-700;
+  }
+
+  .input {
+    @apply block w-full rounded-md border-gray-300 dark:border-gray-600 
+            dark:bg-gray-700 
+           text-gray-900 dark:text-white 
+           focus:ring-2 focus:ring-blue-500 focus:border-transparent
+           transition-colors;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors
+           focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-blue-500 text-white hover:bg-blue-600
+           focus:ring-blue-500;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white
+           hover:bg-gray-300 dark:hover:bg-gray-600
+           focus:ring-gray-500;
+  }
+
+  
 }

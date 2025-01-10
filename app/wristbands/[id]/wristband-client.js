@@ -139,7 +139,7 @@ export function WristbandClient({ initialData, id }) {
     <>
       <div className="max-w-4xl mx-auto p-6">
         {/* Información de la pulsera */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div className=" dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
           <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
             Pulsera de {wristband.owner_name}
           </h1>
@@ -158,7 +158,7 @@ export function WristbandClient({ initialData, id }) {
         {/* Acciones */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Añadir dinero */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className=" dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               Añadir Dinero
             </h2>
@@ -173,7 +173,7 @@ export function WristbandClient({ initialData, id }) {
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500  dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <button
@@ -187,7 +187,7 @@ export function WristbandClient({ initialData, id }) {
           </div>
 
           {/* Realizar gasto */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className=" dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               Realizar Gasto
             </h2>
@@ -202,7 +202,7 @@ export function WristbandClient({ initialData, id }) {
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500  dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <div>
@@ -213,7 +213,7 @@ export function WristbandClient({ initialData, id }) {
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500  dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Ej: Consumición en bar"
                 />
               </div>
@@ -235,7 +235,7 @@ export function WristbandClient({ initialData, id }) {
         )}
 
         {/* Lista de Transacciones */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className=" dark:bg-gray-800 rounded-lg shadow">
           <div className="p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               Historial de Transacciones

@@ -38,7 +38,7 @@ export default function NFCReader({ onRead }) {
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
+    <div className="p-4  rounded-lg shadow">
       <div className="text-center space-y-4">
         {status === 'idle' && (
           <button

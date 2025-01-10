@@ -127,7 +127,7 @@ export default function NFCReader() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-8 font-sans">
-      <div className="max-w-2xl mx-auto bg-white/80 backdrop-blur rounded-xl shadow-lg">
+      <div className="max-w-2xl mx-auto /80 backdrop-blur rounded-xl shadow-lg">
         <div className="p-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -203,7 +203,7 @@ export default function NFCReader() {
                   </h3>
                   {nfcData.records.map((record) => (
                     <div key={record.id} 
-                         className="bg-white p-4 rounded-lg shadow-sm mb-2">
+                         className=" p-4 rounded-lg shadow-sm mb-2">
                       <div className="grid grid-cols-2 gap-2">
                         <span className="text-gray-600">Tipo</span>
                         <span className="font-medium">{record.type}</span>

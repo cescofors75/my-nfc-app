@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
   const [wristbands, setWristbands] = useState([])
   const [transactions, setTransactions] = useState([])
   const [transactionFilter, setTransactionFilter] = useState('ALL') // 'ALL', 'DEPOSIT', 'PURCHASE'
@@ -98,6 +99,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
+
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
@@ -115,6 +117,9 @@ export default function DashboardPage() {
   }, { deposits: 0, purchases: 0 })
 
   return (
+    
+    
+  
     <div className="max-w-7xl mx-auto p-6">
       {/* Resumen y Acciones */}
       <div className="flex justify-between items-center mb-6">
@@ -134,15 +139,15 @@ export default function DashboardPage() {
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Total Ingresos (24h)</h3>
           <p className="text-2xl font-bold text-green-600">+{totals.deposits.toFixed(2)}€</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className=" rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Total Gastos (24h)</h3>
           <p className="text-2xl font-bold text-red-600">-{totals.purchases.toFixed(2)}€</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className=" rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Balance Total</h3>
           <p className="text-2xl font-bold text-blue-600">
             {(totals.deposits - totals.purchases).toFixed(2)}€
@@ -157,7 +162,7 @@ export default function DashboardPage() {
           <Link
             key={wristband.id}
             href={`/wristbands/${wristband.id}`}
-            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            className="block  rounded-lg shadow hover:shadow-md transition-shadow"
           >
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-2">{wristband.owner_name}</h2>
@@ -179,7 +184,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Transacciones en Tiempo Real */}
-      <div className="bg-white rounded-lg shadow">
+      <div className=" rounded-lg shadow">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">Últimas Transacciones</h2>
@@ -277,5 +282,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  
   )
 }

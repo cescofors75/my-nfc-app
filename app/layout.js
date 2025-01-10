@@ -25,15 +25,16 @@ export default function RootLayout({children }) {
                   </h1>
                   <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                     <Link href="/"
-                      className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                        Dashboard
+className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"   >         
+            Dashboard
                       
                     </Link>
-                    <Link href="/wristbands/assign"
-                       className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                        Asignar Pulsera
-                      
-                    </Link>
+                    <Link
+          href="/wristbands/assign"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Nueva Pulsera
+        </Link>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">

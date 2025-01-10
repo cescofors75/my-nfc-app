@@ -129,12 +129,7 @@ export default function DashboardPage() {
             {wristbands.length} pulseras activas
           </p>
         </div>
-        <Link
-          href="/wristbands/assign"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Asignar Nueva Pulsera
-        </Link>
+        
       </div>
 
       {/* Estadísticas */}
@@ -144,7 +139,7 @@ export default function DashboardPage() {
           <p className="text-2xl font-bold text-green-600">+{totals.deposits.toFixed(2)}€</p>
         </div>
         <div className=" rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm uppercase">Total Gastos (24h)</h3>
+          <h3 className="text-gray-500 text-sm uppercase">Total Ventas (24h)</h3>
           <p className="text-2xl font-bold text-red-600">-{totals.purchases.toFixed(2)}€</p>
         </div>
         <div className=" rounded-lg shadow p-6">

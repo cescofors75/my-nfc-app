@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createChart } from 'lightweight-charts'
 import { supabase } from '@/lib/supabaseClient'
-
+import { LineChart, BarChart3 } from 'lucide-react'
 const TIME_RANGES = {
   '30MIN': '30 minutos',
   '1H': '1 hora',
@@ -341,15 +341,25 @@ export default function TransactionsChart() {
               Análisis de Transacciones
             </h2>
             <button
-              onClick={() => setShowAccumulated(!showAccumulated)}
-              className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                showAccumulated
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {showAccumulated ? 'Ver Individual' : 'Ver Acumulado'}
-            </button>
+  onClick={() => setShowAccumulated(!showAccumulated)}
+  className={`px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+    showAccumulated
+      ? 'bg-blue-500 text-white'
+      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+  }`}
+>
+  {showAccumulated ? (
+    <>
+      <BarChart3 className="w-4 h-4" />
+      <span className="hidden sm:inline">Ver Individual</span>
+    </>
+  ) : (
+    <>
+      <LineChart className="w-4 h-4" />
+      <span className="hidden sm:inline">Ver Acumulado</span>
+    </>
+  )}
+</button>
           </div>
           
           <div className="flex flex-wrap gap-2">

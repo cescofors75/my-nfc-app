@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import { ListFilter, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 const TransactionsTable = ({ transactions }) => {
   const [transactionFilter, setTransactionFilter] = useState('ALL');
   
@@ -16,37 +16,44 @@ const TransactionsTable = ({ transactions }) => {
           </h2>
           
           <div className="flex space-x-2 w-full sm:w-auto">
-            <button
-              onClick={() => setTransactionFilter('ALL')}
-              className={`flex-1 sm:flex-none px-3 py-1 rounded ${
-                transactionFilter === 'ALL'
-                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={() => setTransactionFilter('DEPOSIT')}
-              className={`flex-1 sm:flex-none px-3 py-1 rounded ${
-                transactionFilter === 'DEPOSIT'
-                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              Ingresos
-            </button>
-            <button
-              onClick={() => setTransactionFilter('PURCHASE')}
-              className={`flex-1 sm:flex-none px-3 py-1 rounded ${
-                transactionFilter === 'PURCHASE'
-                  ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              Ventas
-            </button>
-          </div>
+  <button
+    onClick={() => setTransactionFilter('ALL')}
+    className={`flex-1 sm:flex-none px-3 py-1 rounded flex items-center justify-center gap-2 ${
+      transactionFilter === 'ALL'
+        ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`}
+  >
+    <ListFilter className="w-4 h-4" />
+    <span className="hidden sm:inline">Todas</span>
+  </button>
+  
+  <button
+    onClick={() => setTransactionFilter('DEPOSIT')}
+    className={`flex-1 sm:flex-none px-3 py-1 rounded flex items-center justify-center gap-2 ${
+      transactionFilter === 'DEPOSIT'
+        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`}
+  >
+    <ArrowUpCircle className="w-4 h-4" />
+    <span className="hidden sm:inline">Ingresos</span>
+  </button>
+  
+  <button
+    onClick={() => setTransactionFilter('PURCHASE')}
+    className={`flex-1 sm:flex-none px-3 py-1 rounded flex items-center justify-center gap-2 ${
+      transactionFilter === 'PURCHASE'
+        ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`}
+  >
+    <ArrowDownCircle className="w-4 h-4" />
+    <span className="hidden sm:inline">Ventas</span>
+  </button>
+</div>
+
+
         </div>
 
         {/* Vista de escritorio */}

@@ -16,11 +16,13 @@ export function WristbandClient({ initialData, id }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [lastTransactionTime, setLastTransactionTime] = useState(null);
-  const [processedTransactionIds, setProcessedTransactionIds] = useState(
+  /* const [processedTransactionIds, setProcessedTransactionIds] = useState(
     new Set()
-  );
+  );*/
+  console.log('Estado inicial:', { initialData, id });
 
-  const loadWristband = async () => {
+  async function loadWristband() {
+    console.log('⏳ Iniciando loadWristband');
     try {
       const { data } = await supabase
         .from("wristbands")
@@ -28,46 +30,57 @@ export function WristbandClient({ initialData, id }) {
         .eq("id", id)
         .single();
 
+      console.log('✅ loadWristband resultado:', data);
       setWristband(data);
     } catch (err) {
-      setError(err.message);
+      console.error('❌ Error en loadWristband:', err);
     }
   }
 
-  const loadTransactions = async () => {
+  async function loadTransactions() {
+    console.log('⏳ Iniciando loadTransactions');
     try {
       const { data, error } = await supabase
         .from("transactions")
-        .select(
-          `
+        .select(`
           *,
           wristbands (
             owner_name,
             nfc_uid,
             balance
           )
-        `
-        )
+        `)
         .eq("wristband_id", id)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
 
-      if (!data || !wristband) {
-        console.error("No hay datos o wristband");
+      console.log('📊 Datos crudos de transacciones:', data);
+
+      if (!data) {
+        console.log('⚠️ No hay datos de transacciones');
         return;
       }
 
-      // Crear un nuevo Set con las IDs de las transacciones actuales
-      const currentTransactionIds = new Set(data.map((t) => t.id));
-      setProcessedTransactionIds(currentTransactionIds);
-
       let saldoActual = 0;
       const transactionsWithBalance = data.map((transaction) => {
+        const prevSaldo = saldoActual;
         if (transaction.type === "DEPOSIT") {
           saldoActual += Number(transaction.amount);
+          console.log('💰 DEPOSIT:', {
+            id: transaction.id,
+            amount: transaction.amount,
+            saldoAntes: prevSaldo,
+            saldoDespues: saldoActual
+          });
         } else if (transaction.type === "PURCHASE") {
           saldoActual -= Number(transaction.amount);
+          console.log('🛍️ PURCHASE:', {
+            id: transaction.id,
+            amount: transaction.amount,
+            saldoAntes: prevSaldo,
+            saldoDespues: saldoActual
+          });
         }
 
         return {
@@ -76,90 +89,79 @@ export function WristbandClient({ initialData, id }) {
         };
       });
 
-      // Invertimos el array para mostrar las más recientes primero
+      console.log('✅ Transacciones procesadas:', transactionsWithBalance);
       setTransactions(transactionsWithBalance.reverse());
     } catch (err) {
-      console.error("Error en loadTransactions:", err);
-      setError(err.message);
+      console.error('❌ Error en loadTransactions:', err);
     }
   }
+
   useEffect(() => {
+    console.log('🔄 Iniciando efecto principal');
     let mounted = true;
-    let channel;
-  
-    const handleNewTransaction = async (payload) => {
-      if (!mounted) return;
-  
-      const newTransaction = payload.new;
-  
-      // Verificar si la transacción ya ha sido procesada
-      if (processedTransactionIds.has(newTransaction.id)) {
-        return;
-      }
-  
-      try {
-        // Actualizar wristband
-        await loadWristband();
-        
-        // Esperar a que termine la actualización del wristband antes de cargar transacciones
-        if (mounted) {
-          await loadTransactions();
-        }
-      } catch (err) {
-        console.error("Error procesando nueva transacción:", err);
-      }
-    };
-  
-    const setupRealtimeSubscription = async () => {
-      // Cargar datos iniciales
-      await Promise.all([loadWristband(), loadTransactions()]);
-  
-      // Configurar suscripción en tiempo real
-      channel = supabase
-        .channel(`transactions-${id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "transactions",
-            filter: `wristband_id=eq.${id}`,
-          },
-          (payload) => {
-            if (mounted && payload.new.wristband_id === id) {
-              handleNewTransaction(payload);
-            }
+
+    const channel = supabase
+      .channel(`wristband-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+          filter: `wristband_id=eq.${id}`,
+        },
+        async (payload) => {
+          console.log('📡 Evento recibido:', payload);
+          
+          if (!mounted) {
+            console.log('⚠️ Componente desmontado, ignorando evento');
+            return;
           }
-        )
-        .subscribe();
-    };
-  
-    setupRealtimeSubscription();
-  
+
+          if (payload.new.wristband_id !== id) {
+            console.log('⚠️ ID no coincide, ignorando evento');
+            return;
+          }
+          
+          console.log('⏳ Esperando antes de actualizar...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          if (mounted) {
+            console.log('🔄 Iniciando actualización tras evento');
+            await loadWristband();
+            await loadTransactions();
+            console.log('✅ Actualización completada');
+          }
+        }
+      )
+      .subscribe();
+
+    console.log('📡 Canal suscrito:', `wristband-${id}`);
+
+    // Cargar datos iniciales
+    loadWristband();
+    loadTransactions();
+
     return () => {
+      console.log('🔚 Limpiando efecto');
       mounted = false;
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [id, loadWristband, loadTransactions, processedTransactionIds]);
-  
-  const verifyAndExecute = (action, actionData) => {
-    setPendingAction({ type: action, data: actionData });
-    setIsVerifying(true);
-  };
+  }, [id]);
 
   const handleVerificationSuccess = async () => {
+    console.log('🔐 Iniciando verificación:', pendingAction);
     setIsVerifying(false);
     setError(null);
 
     const now = Date.now();
-    const COOLDOWN_PERIOD = 10000; // 10 segundos
+    const COOLDOWN_PERIOD = 10000;
 
     if (lastTransactionTime && now - lastTransactionTime < COOLDOWN_PERIOD) {
       const remainingSeconds = Math.ceil(
         (COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000
       );
+      console.log('⏳ Cooldown activo:', remainingSeconds);
       toast.error(
         `Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`
       );
@@ -172,50 +174,60 @@ export function WristbandClient({ initialData, id }) {
     try {
       let transactionData = {
         wristband_id: id,
-        created_at: new Date().toISOString(), // Asegurar timestamp único
         amount: Number(pendingAction.data.amount),
       };
 
+      console.log('📝 Preparando transacción:', transactionData);
+
       if (pendingAction.type === "ADD_MONEY") {
-        transactionData = {
-          ...transactionData,
-          type: "DEPOSIT",
-        };
+        console.log('💰 Verificando depósito duplicado');
+        const { data: existingTransactions } = await supabase
+          .from("transactions")
+          .select("id")
+          .eq("wristband_id", id)
+          .eq("amount", Number(pendingAction.data.amount))
+          .eq("type", "DEPOSIT")
+          .gte("created_at", new Date(Date.now() - 60000).toISOString());
+
+        if (existingTransactions?.length > 0) {
+          console.log('⚠️ Depósito duplicado detectado:', existingTransactions);
+          return;
+        }
+
+        transactionData.type = "DEPOSIT";
       } else if (pendingAction.type === "SPEND_MONEY") {
-        // Verificar saldo nuevamente antes de realizar el gasto
-        const { data: currentWristband, error: wristbandError } = await supabase
+        console.log('🛍️ Verificando saldo para compra');
+        const { data: currentWristband } = await supabase
           .from("wristbands")
           .select("balance")
           .eq("id", id)
           .single();
 
-        if (wristbandError) throw wristbandError;
+        console.log('💳 Saldo actual:', currentWristband?.balance);
 
-        if (currentWristband.balance < Number(pendingAction.data.amount)) {
+        if (!currentWristband || currentWristband.balance < Number(pendingAction.data.amount)) {
           throw new Error("Saldo insuficiente");
         }
 
-        transactionData = {
-          ...transactionData,
-          type: "PURCHASE",
-          description: pendingAction.data.description,
-        };
+        transactionData.type = "PURCHASE";
+        transactionData.description = pendingAction.data.description;
       }
 
-      const { error: insertError } = await supabase
+      console.log('📤 Enviando transacción:', transactionData);
+      const { data: insertedData, error: insertError } = await supabase
         .from("transactions")
-        .insert(transactionData);
+        .insert(transactionData)
+        .select();
 
       if (insertError) throw insertError;
+
+      console.log('✅ Transacción completada:', insertedData);
 
       setAmount("");
       setDescription("");
       setLastTransactionTime(Date.now());
-
-      // No necesitamos llamar a loadTransactions aquí
-      // El manejador de eventos en tiempo real se encargará de actualizar los datos
     } catch (err) {
-      console.error("Error en la transacción:", err);
+      console.error('❌ Error en transacción:', err);
       setError(err.message);
       toast.error(err.message);
     } finally {
@@ -223,7 +235,10 @@ export function WristbandClient({ initialData, id }) {
       setPendingAction(null);
     }
   };
-
+  const verifyAndExecute = (action, actionData) => {
+    setPendingAction({ type: action, data: actionData });
+    setIsVerifying(true);
+  };
   const handleAddMoney = () => {
     if (!amount) return;
     verifyAndExecute("ADD_MONEY", { amount });

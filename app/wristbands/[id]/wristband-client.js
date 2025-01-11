@@ -104,10 +104,6 @@ export function WristbandClient({ initialData, id }) {
         return
       }
   
-      // Log inmediato para ver los datos
-      console.log('Datos recibidos:', JSON.stringify(data, null, 2))
-  
-      // Procesamos las transacciones una por una para ver el cálculo
       let saldoActual = 0
       const transactionsWithBalance = []
   
@@ -118,13 +114,6 @@ export function WristbandClient({ initialData, id }) {
           saldoActual -= Number(transaction.amount)
         }
   
-        // Log de cada cálculo
-        console.log('Operación:', {
-          tipo: transaction.type,
-          cantidad: transaction.amount,
-          saldoResultante: saldoActual
-        })
-  
         transactionsWithBalance.push({
           ...transaction,
           balanceAtMoment: saldoActual
@@ -133,8 +122,6 @@ export function WristbandClient({ initialData, id }) {
   
       // Invertimos el array para mostrar las más recientes primero
       transactionsWithBalance.reverse()
-  
-      console.log('Transacciones procesadas:', JSON.stringify(transactionsWithBalance, null, 2))
       
       setTransactions(transactionsWithBalance)
     } catch (err) {
@@ -142,12 +129,11 @@ export function WristbandClient({ initialData, id }) {
       setError(err.message)
     }
   }, [id, wristband])
-  
   // Añadir un useEffect para ver cuando se llama a loadTransactions
-  useEffect(() => {
+  /*useEffect(() => {
     console.log('Llamando a loadTransactions')
     loadTransactions()
-  }, [loadTransactions])
+  }, [loadTransactions])*/
 
   useEffect(() => {
     const channel = supabase
@@ -160,13 +146,19 @@ export function WristbandClient({ initialData, id }) {
           table: 'transactions',
           filter: `wristband_id=eq.${id}`,
         },
-        () => {
-          loadWristband()
-          loadTransactions()
+        (payload) => {
+          // Verificamos que el cambio sea relevante para este componente
+          if (payload.new && payload.new.wristband_id === id) {
+            loadWristband()
+            loadTransactions()
+          }
         }
       )
       .subscribe()
-
+  
+    // Cargamos los datos iniciales una vez
+    loadTransactions()
+  
     return () => {
       supabase.removeChannel(channel)
     }
@@ -177,63 +169,68 @@ export function WristbandClient({ initialData, id }) {
     setIsVerifying(true)
   }
 
-  const handleVerificationSuccess = async () => {
-    setIsVerifying(false)
-    setError(null)
+  
+const handleVerificationSuccess = async () => {
+  setIsVerifying(false)
+  setError(null)
 
-    const now = Date.now()
-    const COOLDOWN_PERIOD = 10000 // 10 segundos
+  const now = Date.now()
+  const COOLDOWN_PERIOD = 10000 // 10 segundos
 
-    // Verificar si ha pasado suficiente tiempo desde la última transacción
-    if (lastTransactionTime && (now - lastTransactionTime) < COOLDOWN_PERIOD) {
-      const remainingSeconds = Math.ceil((COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000)
-      toast.error(`Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`)
-      setPendingAction(null)
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      if (pendingAction.type === 'ADD_MONEY') {
-        const { error } = await supabase
-          .from('transactions')
-          .insert({
-            wristband_id: id,
-            type: 'DEPOSIT',
-            amount: Number(pendingAction.data.amount)
-          })
-
-        if (error) throw error
-        setAmount('')
-        setLastTransactionTime(Date.now())
-      } else if (pendingAction.type === 'SPEND_MONEY') {
-        if (wristband.balance < Number(pendingAction.data.amount)) {
-          throw new Error('Saldo insuficiente')
-        }
-
-        const { error } = await supabase
-          .from('transactions')
-          .insert({
-            wristband_id: id,
-            type: 'PURCHASE',
-            amount: Number(pendingAction.data.amount),
-            description: pendingAction.data.description
-          })
-
-        if (error) throw error
-        setAmount('')
-        setDescription('')
-        setLastTransactionTime(Date.now())
-      }
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-      setPendingAction(null)
-    }
+  if (lastTransactionTime && (now - lastTransactionTime) < COOLDOWN_PERIOD) {
+    const remainingSeconds = Math.ceil((COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000)
+    toast.error(`Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`)
+    setPendingAction(null)
+    return
   }
 
+  setLoading(true)
+
+  try {
+    if (pendingAction.type === 'ADD_MONEY') {
+      const { error } = await supabase
+        .from('transactions')
+        .insert({
+          wristband_id: id,
+          type: 'DEPOSIT',
+          amount: Number(pendingAction.data.amount)
+        })
+
+      if (error) throw error
+      
+      // No necesitamos llamar a loadTransactions aquí
+      // porque el evento en tiempo real se encargará de ello
+      setAmount('')
+      setLastTransactionTime(Date.now())
+    } else if (pendingAction.type === 'SPEND_MONEY') {
+      if (wristband.balance < Number(pendingAction.data.amount)) {
+        throw new Error('Saldo insuficiente')
+      }
+
+      const { error } = await supabase
+        .from('transactions')
+        .insert({
+          wristband_id: id,
+          type: 'PURCHASE',
+          amount: Number(pendingAction.data.amount),
+          description: pendingAction.data.description
+        })
+
+      if (error) throw error
+      
+      // No necesitamos llamar a loadTransactions aquí
+      // porque el evento en tiempo real se encargará de ello
+      setAmount('')
+      setDescription('')
+      setLastTransactionTime(Date.now())
+    }
+  } catch (err) {
+    setError(err.message)
+  } finally {
+    setLoading(false)
+    setPendingAction(null)
+  }
+}
   const handleAddMoney = () => {
     if (!amount) return
     verifyAndExecute('ADD_MONEY', { amount })

@@ -12,10 +12,16 @@ export default function Navbar({ setIsQuickScanOpen }) {
         <div className="flex justify-between h-16">
           {/* Logo y título */}
           <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+      <div>
       <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-        VisitTech NFC
+        VisitTech
       </h1>
+      <p className="text-gray-600">
+        realtime transactions
+      </p>
+      </div>
     </Link>
+    
 
           {/* Navegación Desktop */}
           <div className="hidden md:flex items-center space-x-4">

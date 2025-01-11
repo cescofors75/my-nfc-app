@@ -17,16 +17,19 @@ const TIME_RANGES = {
 export default function TransactionsChart() {
   const [timeRange, setTimeRange] = useState('24H')
   const [showAccumulated, setShowAccumulated] = useState(false)
+  const [transactions, setTransactions] = useState([])
   const [stats, setStats] = useState({
     totalIncomes: 0,
     totalExpenses: 0,
     accumulated: 0
   })
+
   const chartContainerRef = useRef(null)
   const chartRef = useRef(null)
   const incomesSeriesRef = useRef(null)
   const expensesSeriesRef = useRef(null)
   const accumulatedSeriesRef = useRef(null)
+  const channelRef = useRef(null)
 
   const processTransactions = (transactions) => {
     const timeMap = new Map()
@@ -45,11 +48,13 @@ export default function TransactionsChart() {
       }
       
       if (t.type === 'DEPOSIT') {
-        timeMap.get(timestamp).incomes += t.amount
-        accumulatedIncomes += t.amount
+        const amount = Number(t.amount)
+        timeMap.get(timestamp).incomes += amount
+        accumulatedIncomes += amount
       } else {
-        timeMap.get(timestamp).expenses += t.amount
-        accumulatedExpenses += t.amount
+        const amount = Number(t.amount)
+        timeMap.get(timestamp).expenses += amount
+        accumulatedExpenses += amount
       }
 
       totalAccumulated = accumulatedIncomes - accumulatedExpenses
@@ -86,7 +91,6 @@ export default function TransactionsChart() {
       .select('*')
       .order('created_at', { ascending: true })
 
-    // Aplicar filtro de tiempo
     const now = new Date()
     let startTime
 
@@ -114,9 +118,105 @@ export default function TransactionsChart() {
       query = query.gte('created_at', startTime.toISOString())
     }
 
-    const { data: transactions } = await query
-    return transactions || []
+    const { data } = await query
+    return data || []
   }
+
+  const updateChart = (transactions) => {
+    if (!transactions.length || !incomesSeriesRef.current || !expensesSeriesRef.current || !accumulatedSeriesRef.current) return
+    
+    const { incomes, expenses, accumulated } = processTransactions(transactions)
+    
+    incomesSeriesRef.current.setData(incomes)
+    expensesSeriesRef.current.setData(expenses)
+    accumulatedSeriesRef.current.setData(accumulated)
+  }
+
+  const handleRealtimeTransaction = (payload) => {
+    const { eventType, new: newTransaction, old: oldTransaction } = payload
+    
+    setTransactions(currentTransactions => {
+      let updatedTransactions = [...currentTransactions]
+
+      switch (eventType) {
+        case 'INSERT':
+          if (shouldIncludeTransaction(newTransaction)) {
+            updatedTransactions = [...updatedTransactions, newTransaction]
+          }
+          break
+
+        case 'UPDATE':
+          updatedTransactions = updatedTransactions.map(t => 
+            t.id === newTransaction.id ? newTransaction : t
+          )
+          break
+
+        case 'DELETE':
+          updatedTransactions = updatedTransactions.filter(t => 
+            t.id !== oldTransaction.id
+          )
+          break
+      }
+
+      updatedTransactions.sort((a, b) => 
+        new Date(a.created_at) - new Date(b.created_at)
+      )
+
+      updateChart(updatedTransactions)
+      return updatedTransactions
+    })
+  }
+
+  const shouldIncludeTransaction = (transaction) => {
+    if (timeRange === 'ALL') return true
+
+    const transactionDate = new Date(transaction.created_at)
+    const now = new Date()
+    
+    switch (timeRange) {
+      case '30MIN':
+        return now - transactionDate <= 30 * 60 * 1000
+      case '1H':
+        return now - transactionDate <= 60 * 60 * 1000
+      case '24H':
+        return now - transactionDate <= 24 * 60 * 60 * 1000
+      case '7D':
+        return now - transactionDate <= 7 * 24 * 60 * 60 * 1000
+      case '30D':
+        return now - transactionDate <= 30 * 24 * 60 * 60 * 1000
+      default:
+        return true
+    }
+  }
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const transactions = await fetchTransactions()
+      setTransactions(transactions)
+      updateChart(transactions)
+    }
+
+    channelRef.current = supabase
+      .channel('transactions-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+        },
+        handleRealtimeTransaction
+      )
+      .subscribe()
+
+    loadInitialData()
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
+    }
+  }, [timeRange])
 
   useEffect(() => {
     if (!chartContainerRef.current) return
@@ -145,16 +245,6 @@ export default function TransactionsChart() {
       },
       crosshair: {
         mode: 1,
-        vertLine: {
-          color: '#9CA3AF',
-          width: 1,
-          style: 1,
-        },
-        horzLine: {
-          color: '#9CA3AF',
-          width: 1,
-          style: 1,
-        },
       },
     })
 
@@ -181,32 +271,6 @@ export default function TransactionsChart() {
       visible: showAccumulated
     })
 
-    const loadData = async () => {
-      const transactions = await fetchTransactions()
-      const { incomes, expenses, accumulated } = processTransactions(transactions)
-      
-      incomesSeriesRef.current.setData(incomes)
-      expensesSeriesRef.current.setData(expenses)
-      accumulatedSeriesRef.current.setData(accumulated)
-    }
-
-    loadData()
-
-    const channel = supabase
-      .channel('realtime-charts')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-        },
-        async () => {
-          await loadData()
-        }
-      )
-      .subscribe()
-
     const handleResize = () => {
       chartRef.current.applyOptions({
         width: chartContainerRef.current.clientWidth,
@@ -216,12 +280,17 @@ export default function TransactionsChart() {
     window.addEventListener('resize', handleResize)
     handleResize()
 
+    if (transactions.length) {
+      updateChart(transactions)
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize)
-      chartRef.current.remove()
-      supabase.removeChannel(channel)
+      if (chartRef.current) {
+        chartRef.current.remove()
+      }
     }
-  }, [timeRange, showAccumulated])
+  }, [showAccumulated])
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">

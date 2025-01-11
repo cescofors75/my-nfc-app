@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 
+import TransactionsChart from '@/components/TransactionsChart'
 export default function DashboardPage() {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
   const [wristbands, setWristbands] = useState([])
@@ -132,26 +133,9 @@ export default function DashboardPage() {
         
       </div>
 
-      {/* Estadísticas */}
-      <div className=" grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm uppercase">Total Ingresos (24h)</h3>
-          <p className="text-2xl font-bold text-green-600">+{totals.deposits.toFixed(2)}€</p>
-        </div>
-        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm uppercase">Total Ventas (24h)</h3>
-          <p className="text-2xl font-bold text-red-600">-{totals.purchases.toFixed(2)}€</p>
-        </div>
-        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm uppercase">Balance Total</h3>
-          <p className="text-2xl font-bold text-blue-600">
-            {(totals.deposits - totals.purchases).toFixed(2)}€
-          </p>
-        </div>
-      </div>
 
       {/* Lista de Pulseras */}
-      <h2 className="text-xl font-semibold mb-4">Pulseras Activas</h2>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {wristbands.map((wristband) => (
           <Link
@@ -177,7 +161,7 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
-
+ <TransactionsChart />
       {/* Transacciones en Tiempo Real */}
       <div className=" rounded-lg shadow">
         <div className="p-6">
@@ -212,11 +196,11 @@ export default function DashboardPage() {
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Gastos
+                Ventas
               </button>
             </div>
           </div>
-
+        
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>

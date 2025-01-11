@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
@@ -16,11 +17,15 @@ export function WristbandClient({ initialData, id }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [lastTransactionTime, setLastTransactionTime] = useState(null);
-  /* const [processedTransactionIds, setProcessedTransactionIds] = useState(
-    new Set()
-  );*/
-  console.log('Estado inicial:', { initialData, id });
+  
 
+  const [isProcessingTransaction, setIsProcessingTransaction] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState(Date.now());
+  
+  console.log('🔄 Montando componente para wristband:', id, 'tiempo:', Date.now());
+
+  console.log('Estado inicial:', { initialData, id });
+/*
   async function loadWristband() {
     console.log('⏳ Iniciando loadWristband');
     try {
@@ -94,116 +99,93 @@ export function WristbandClient({ initialData, id }) {
     } catch (err) {
       console.error('❌ Error en loadTransactions:', err);
     }
-  }
+  }*/
 
   useEffect(() => {
-    console.log('🔄 Iniciando efecto principal');
-    let mounted = true;
+    const currentScanTime = Date.now();
+    console.log('📱 Nuevo escaneo detectado:', {
+      previousScan: lastScanTime,
+      currentScan: currentScanTime,
+      timeDiff: currentScanTime - lastScanTime
+    });
 
-    const channel = supabase
-      .channel(`wristband-${id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "transactions",
-          filter: `wristband_id=eq.${id}`,
-        },
-        async (payload) => {
-          console.log('📡 Evento recibido:', payload);
-          
-          if (!mounted) {
-            console.log('⚠️ Componente desmontado, ignorando evento');
-            return;
-          }
+    // Si hay una transacción en proceso, cancelarla
+    if (isProcessingTransaction) {
+      console.log('⚠️ Transacción en proceso detectada durante nuevo escaneo');
+      setIsProcessingTransaction(false);
+      setPendingAction(null);
+      setIsVerifying(false);
+      toast.warning('Operación anterior cancelada por nuevo escaneo');
+    }
 
-          if (payload.new.wristband_id !== id) {
-            console.log('⚠️ ID no coincide, ignorando evento');
-            return;
-          }
-          
-          console.log('⏳ Esperando antes de actualizar...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          if (mounted) {
-            console.log('🔄 Iniciando actualización tras evento');
-            await loadWristband();
-            await loadTransactions();
-            console.log('✅ Actualización completada');
-          }
-        }
-      )
-      .subscribe();
-
-    console.log('📡 Canal suscrito:', `wristband-${id}`);
-
-    // Cargar datos iniciales
-    loadWristband();
-    loadTransactions();
-
-    return () => {
-      console.log('🔚 Limpiando efecto');
-      mounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
+    setLastScanTime(currentScanTime);
+    
+    // Limpiar estados si es un nuevo escaneo
+    setAmount('');
+    setDescription('');
+    setError(null);
+    
+  }, [id]); // id cambiará con cada nuevo escaneo
 
   const handleVerificationSuccess = async () => {
     console.log('🔐 Iniciando verificación:', pendingAction);
-    setIsVerifying(false);
-    setError(null);
-
-    const now = Date.now();
-    const COOLDOWN_PERIOD = 10000;
-
-    if (lastTransactionTime && now - lastTransactionTime < COOLDOWN_PERIOD) {
-      const remainingSeconds = Math.ceil(
-        (COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000
-      );
-      console.log('⏳ Cooldown activo:', remainingSeconds);
-      toast.error(
-        `Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`
-      );
-      setPendingAction(null);
+    
+    if (isProcessingTransaction) {
+      console.log('⚠️ Ya hay una transacción en proceso');
       return;
     }
 
-    setLoading(true);
+    setIsVerifying(false);
+    setError(null);
+    setIsProcessingTransaction(true);
 
+    const now = Date.now();
+    const COOLDOWN_PERIOD = 10000;
+    
     try {
+      if (lastTransactionTime && now - lastTransactionTime < COOLDOWN_PERIOD) {
+        const remainingSeconds = Math.ceil(
+          (COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000
+        );
+        throw new Error(`Por seguridad, espera ${remainingSeconds} segundos`);
+      }
+
+      // Verificar que la pulsera no ha sido re-escaneada durante la preparación
+      if (lastScanTime !== now) {
+        throw new Error('La pulsera ha sido re-escaneada');
+      }
+
+      setLoading(true);
+
       let transactionData = {
         wristband_id: id,
         amount: Number(pendingAction.data.amount),
+        transaction_id: `${id}-${Date.now()}`, // ID único para la transacción
       };
 
-      console.log('📝 Preparando transacción:', transactionData);
-
       if (pendingAction.type === "ADD_MONEY") {
-        console.log('💰 Verificando depósito duplicado');
+        // Verificar transacciones recientes similares
         const { data: existingTransactions } = await supabase
           .from("transactions")
           .select("id")
           .eq("wristband_id", id)
           .eq("amount", Number(pendingAction.data.amount))
           .eq("type", "DEPOSIT")
-          .gte("created_at", new Date(Date.now() - 60000).toISOString());
+          .gte("created_at", new Date(Date.now() - 30000).toISOString()); // Últimos 30 segundos
 
         if (existingTransactions?.length > 0) {
-          console.log('⚠️ Depósito duplicado detectado:', existingTransactions);
-          return;
+          console.log('🚫 Transacción duplicada detectada:', existingTransactions);
+          throw new Error('Transacción duplicada detectada');
         }
 
         transactionData.type = "DEPOSIT";
       } else if (pendingAction.type === "SPEND_MONEY") {
-        console.log('🛍️ Verificando saldo para compra');
+        // Verificar saldo actual
         const { data: currentWristband } = await supabase
           .from("wristbands")
           .select("balance")
           .eq("id", id)
           .single();
-
-        console.log('💳 Saldo actual:', currentWristband?.balance);
 
         if (!currentWristband || currentWristband.balance < Number(pendingAction.data.amount)) {
           throw new Error("Saldo insuficiente");
@@ -214,18 +196,18 @@ export function WristbandClient({ initialData, id }) {
       }
 
       console.log('📤 Enviando transacción:', transactionData);
-      const { data: insertedData, error: insertError } = await supabase
+      
+      const { error: insertError } = await supabase
         .from("transactions")
-        .insert(transactionData)
-        .select();
+        .insert(transactionData);
 
       if (insertError) throw insertError;
-
-      console.log('✅ Transacción completada:', insertedData);
 
       setAmount("");
       setDescription("");
       setLastTransactionTime(Date.now());
+      toast.success('Transacción completada con éxito');
+      
     } catch (err) {
       console.error('❌ Error en transacción:', err);
       setError(err.message);
@@ -233,6 +215,7 @@ export function WristbandClient({ initialData, id }) {
     } finally {
       setLoading(false);
       setPendingAction(null);
+      setIsProcessingTransaction(false);
     }
   };
   const verifyAndExecute = (action, actionData) => {
@@ -258,6 +241,12 @@ export function WristbandClient({ initialData, id }) {
 
   return (
     <>
+       <div>
+      {isProcessingTransaction && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-black p-2 text-center">
+          Procesando transacción... Por favor, no escanee nuevamente la pulsera.
+        </div>
+      )}
       <div className="max-w-4xl mx-auto p-6">
         {/* Información de la pulsera */}
         <div className="dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
@@ -501,6 +490,7 @@ export function WristbandClient({ initialData, id }) {
             : "realizar el gasto"
         }
       />
+    </div>
     </>
   );
 }

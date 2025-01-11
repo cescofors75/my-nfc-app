@@ -33,11 +33,16 @@ export default function TransactionsChart() {
 
   const processTransactions = (transactions) => {
     const timeMap = new Map()
-    let accumulatedIncomes = 0
-    let accumulatedExpenses = 0
-    let totalAccumulated = 0
+    let runningIncomes = 0
+    let runningExpenses = 0
     
-    transactions.forEach(t => {
+    // Filtrar las transacciones según el rango de tiempo actual
+    const filteredTransactions = transactions.filter(shouldIncludeTransaction)
+    
+    // Ordenar las transacciones por fecha
+    filteredTransactions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    
+    filteredTransactions.forEach(t => {
       const timestamp = new Date(t.created_at).getTime() / 1000
       if (!timeMap.has(timestamp)) {
         timeMap.set(timestamp, { 
@@ -47,24 +52,24 @@ export default function TransactionsChart() {
         })
       }
       
+      const amount = Number(t.amount)
       if (t.type === 'DEPOSIT') {
-        const amount = Number(t.amount)
         timeMap.get(timestamp).incomes += amount
-        accumulatedIncomes += amount
+        runningIncomes += amount
       } else {
-        const amount = Number(t.amount)
         timeMap.get(timestamp).expenses += amount
-        accumulatedExpenses += amount
+        runningExpenses += amount
       }
-
-      totalAccumulated = accumulatedIncomes - accumulatedExpenses
-      timeMap.get(timestamp).accumulated = totalAccumulated
+      
+      // Actualizar el valor acumulado para este punto en el tiempo
+      timeMap.get(timestamp).accumulated = runningIncomes - runningExpenses
     })
 
+    // Actualizar las estadísticas con los totales
     setStats({
-      totalIncomes: accumulatedIncomes,
-      totalExpenses: accumulatedExpenses,
-      accumulated: totalAccumulated
+      totalIncomes: runningIncomes,
+      totalExpenses: runningExpenses,
+      accumulated: runningIncomes - runningExpenses
     })
 
     const sortedTimes = Array.from(timeMap.entries()).sort((a, b) => a[0] - b[0])
@@ -122,104 +127,13 @@ export default function TransactionsChart() {
     return data || []
   }
 
-  const updateChart = (transactions) => {
-    if (!transactions.length || !incomesSeriesRef.current || !expensesSeriesRef.current || !accumulatedSeriesRef.current) return
-    
-    const { incomes, expenses, accumulated } = processTransactions(transactions)
-    
-    incomesSeriesRef.current.setData(incomes)
-    expensesSeriesRef.current.setData(expenses)
-    accumulatedSeriesRef.current.setData(accumulated)
-  }
-
-  const handleRealtimeTransaction = (payload) => {
-    const { eventType, new: newTransaction, old: oldTransaction } = payload
-    
-    setTransactions(currentTransactions => {
-      let updatedTransactions = [...currentTransactions]
-
-      switch (eventType) {
-        case 'INSERT':
-          if (shouldIncludeTransaction(newTransaction)) {
-            updatedTransactions = [...updatedTransactions, newTransaction]
-          }
-          break
-
-        case 'UPDATE':
-          updatedTransactions = updatedTransactions.map(t => 
-            t.id === newTransaction.id ? newTransaction : t
-          )
-          break
-
-        case 'DELETE':
-          updatedTransactions = updatedTransactions.filter(t => 
-            t.id !== oldTransaction.id
-          )
-          break
-      }
-
-      updatedTransactions.sort((a, b) => 
-        new Date(a.created_at) - new Date(b.created_at)
-      )
-
-      updateChart(updatedTransactions)
-      return updatedTransactions
-    })
-  }
-
-  const shouldIncludeTransaction = (transaction) => {
-    if (timeRange === 'ALL') return true
-
-    const transactionDate = new Date(transaction.created_at)
-    const now = new Date()
-    
-    switch (timeRange) {
-      case '30MIN':
-        return now - transactionDate <= 30 * 60 * 1000
-      case '1H':
-        return now - transactionDate <= 60 * 60 * 1000
-      case '24H':
-        return now - transactionDate <= 24 * 60 * 60 * 1000
-      case '7D':
-        return now - transactionDate <= 7 * 24 * 60 * 60 * 1000
-      case '30D':
-        return now - transactionDate <= 30 * 24 * 60 * 60 * 1000
-      default:
-        return true
-    }
-  }
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      const transactions = await fetchTransactions()
-      setTransactions(transactions)
-      updateChart(transactions)
-    }
-
-    channelRef.current = supabase
-      .channel('transactions-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-        },
-        handleRealtimeTransaction
-      )
-      .subscribe()
-
-    loadInitialData()
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-      }
-    }
-  }, [timeRange])
-
-  useEffect(() => {
+  const initializeChart = () => {
     if (!chartContainerRef.current) return
+
+    // Limpiar el gráfico anterior si existe
+    if (chartRef.current) {
+      chartRef.current.remove()
+    }
 
     chartRef.current = createChart(chartContainerRef.current, {
       height: 400,
@@ -280,17 +194,120 @@ export default function TransactionsChart() {
     window.addEventListener('resize', handleResize)
     handleResize()
 
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }
+
+  const updateChart = (transactions) => {
+    if (!transactions.length || !incomesSeriesRef.current || !expensesSeriesRef.current || !accumulatedSeriesRef.current) return
+    
+    const { incomes, expenses, accumulated } = processTransactions(transactions)
+    
+    incomesSeriesRef.current.setData(incomes)
+    expensesSeriesRef.current.setData(expenses)
+    accumulatedSeriesRef.current.setData(accumulated)
+
+    // Actualizar la visibilidad de las series
+    incomesSeriesRef.current.applyOptions({ visible: !showAccumulated })
+    expensesSeriesRef.current.applyOptions({ visible: !showAccumulated })
+    accumulatedSeriesRef.current.applyOptions({ visible: showAccumulated })
+  }
+
+  const handleRealtimeTransaction = (payload) => {
+    const { eventType, new: newTransaction, old: oldTransaction } = payload
+    
+    setTransactions(currentTransactions => {
+      let updatedTransactions = [...currentTransactions]
+
+      switch (eventType) {
+        case 'INSERT':
+          if (shouldIncludeTransaction(newTransaction)) {
+            updatedTransactions = [...updatedTransactions, newTransaction]
+          }
+          break
+
+        case 'UPDATE':
+          updatedTransactions = updatedTransactions.map(t => 
+            t.id === newTransaction.id ? newTransaction : t
+          )
+          break
+
+        case 'DELETE':
+          updatedTransactions = updatedTransactions.filter(t => 
+            t.id !== oldTransaction.id
+          )
+          break
+      }
+
+      updatedTransactions.sort((a, b) => 
+        new Date(a.created_at) - new Date(b.created_at)
+      )
+
+      return updatedTransactions
+    })
+  }
+
+  const shouldIncludeTransaction = (transaction) => {
+    if (timeRange === 'ALL') return true
+
+    const transactionDate = new Date(transaction.created_at)
+    const now = new Date()
+    
+    switch (timeRange) {
+      case '30MIN':
+        return now - transactionDate <= 30 * 60 * 1000
+      case '1H':
+        return now - transactionDate <= 60 * 60 * 1000
+      case '24H':
+        return now - transactionDate <= 24 * 60 * 60 * 1000
+      case '7D':
+        return now - transactionDate <= 7 * 24 * 60 * 60 * 1000
+      case '30D':
+        return now - transactionDate <= 30 * 24 * 60 * 60 * 1000
+      default:
+        return true
+    }
+  }
+
+  // Efecto para inicializar el gráfico y manejar la suscripción a tiempo real
+  useEffect(() => {
+    const cleanup = initializeChart()
+    
+    const loadInitialData = async () => {
+      const transactions = await fetchTransactions()
+      setTransactions(transactions)
+    }
+
+    channelRef.current = supabase
+      .channel('transactions-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+        },
+        handleRealtimeTransaction
+      )
+      .subscribe()
+
+    loadInitialData()
+
+    return () => {
+      cleanup?.()
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
+    }
+  }, [timeRange, showAccumulated])
+
+  // Efecto para actualizar el gráfico cuando cambian las transacciones o el timeRange
+  useEffect(() => {
     if (transactions.length) {
       updateChart(transactions)
     }
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      if (chartRef.current) {
-        chartRef.current.remove()
-      }
-    }
-  }, [showAccumulated])
+  }, [transactions, showAccumulated, timeRange])
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">

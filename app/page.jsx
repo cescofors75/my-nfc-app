@@ -162,6 +162,7 @@ export default function DashboardPage() {
         ))}
       </div>
  <TransactionsChart />
+ <br/>
  <TransactionsTable transactions={transactions} />
       {/* Transacciones en Tiempo Real */}
       

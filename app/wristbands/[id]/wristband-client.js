@@ -165,7 +165,57 @@ const loadTransactions = async () => {
     setError(null);
     
   }, [id]); // id cambiará con cada nuevo escaneo
+// Efecto para la suscripción en tiempo real
+useEffect(() => {
+  let mounted = true;
+  console.log('🔄 Iniciando efecto de suscripción');
 
+  const channel = supabase
+    .channel(`wristband-${id}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "transactions",
+        filter: `wristband_id=eq.${id}`,
+      },
+      async (payload) => {
+        console.log('📡 Evento recibido:', payload);
+        
+        if (!mounted) {
+          console.log('⚠️ Componente desmontado, ignorando evento');
+          return;
+        }
+
+        if (payload.new.wristband_id !== id) {
+          console.log('⚠️ ID no coincide, ignorando evento');
+          return;
+        }
+        
+        console.log('⏳ Esperando antes de actualizar...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (mounted) {
+          console.log('🔄 Iniciando actualización tras evento');
+          await loadWristband();
+          await loadTransactions();
+          console.log('✅ Actualización completada');
+        }
+      }
+    )
+    .subscribe();
+
+  // Cargar datos iniciales
+  loadWristband();
+  loadTransactions();
+
+  return () => {
+    console.log('🔚 Limpiando efecto de suscripción');
+    mounted = false;
+    supabase.removeChannel(channel);
+  };
+}, [id]);
   const handleVerificationSuccess = async () => {
     console.log('🔐 Iniciando verificación:', pendingAction);
     
@@ -454,10 +504,10 @@ const loadTransactions = async () => {
                           : "text-red-600 dark:text-red-400"
                       }`}>
                         {transaction.type === "DEPOSIT" ? "+" : "-"}
-                        ${(transaction.amount || 0).toFixed(2)}
+                        {(transaction.amount || 0).toFixed(2)}€ 
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Saldo: ${(transaction.balanceAtMoment || 0).toFixed(2)}
+                        Saldo: {(transaction.balanceAtMoment || 0).toFixed(2)}€
                       </p>
                     </div>
                   </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
-
+import Link from 'next/link'
 export default function Navbar({ setIsQuickScanOpen }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -11,11 +11,11 @@ export default function Navbar({ setIsQuickScanOpen }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo y título */}
-          <div className="flex items-center">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              VisitTech NFC
-            </h1>
-          </div>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+        VisitTech NFC
+      </h1>
+    </Link>
 
           {/* Navegación Desktop */}
           <div className="hidden md:flex items-center space-x-4">

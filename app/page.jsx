@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
-
+import TransactionsTable from '@/components/TransactionsTable'
 import TransactionsChart from '@/components/TransactionsChart'
 export default function DashboardPage() {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
@@ -162,104 +162,9 @@ export default function DashboardPage() {
         ))}
       </div>
  <TransactionsChart />
+ <TransactionsTable transactions={transactions} />
       {/* Transacciones en Tiempo Real */}
-      <div className=" rounded-lg shadow">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Últimas Transacciones</h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setTransactionFilter('ALL')}
-                className={`px-3 py-1 rounded ${
-                  transactionFilter === 'ALL'
-                    ? 'bg-gray-200 text-gray-800'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Todas
-              </button>
-              <button
-                onClick={() => setTransactionFilter('DEPOSIT')}
-                className={`px-3 py-1 rounded ${
-                  transactionFilter === 'DEPOSIT'
-                    ? 'bg-green-100 text-green-800'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Ingresos
-              </button>
-              <button
-                onClick={() => setTransactionFilter('PURCHASE')}
-                className={`px-3 py-1 rounded ${
-                  transactionFilter === 'PURCHASE'
-                    ? 'bg-red-100 text-red-800'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Ventas
-              </button>
-            </div>
-          </div>
-        
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Fecha/Hora
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Usuario
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Tipo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Cantidad
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Descripción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(transaction.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {transaction.wristbands?.owner_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          transaction.type === 'DEPOSIT'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {transaction.type === 'DEPOSIT' ? 'Ingreso' : 'Gasto'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={transaction.type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'}
-                      >
-                        {transaction.type === 'DEPOSIT' ? '+' : '-'}
-                        {transaction.amount.toFixed(2)}€
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {transaction.description || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      
     </div>
   
   )

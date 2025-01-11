@@ -30,7 +30,7 @@ export default function NFCVerificationModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className=" dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+      <div className="bg-white-800 dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
         <div className="text-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             Verificación de Pulsera

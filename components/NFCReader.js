@@ -1,9 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function NFCReader({ onRead }) {
-  const [status, setStatus] = useState('idle') // idle, scanning, success, error
+  const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
 
   const startScanning = async () => {
@@ -30,25 +31,20 @@ export default function NFCReader({ onRead }) {
         setError('Error al leer la tarjeta')
         setStatus('error')
       }
-
     } catch (error) {
       setError(error.message)
       setStatus('error')
     }
   }
 
-  return (
-    <div className="p-4  rounded-lg shadow">
-      <div className="text-center space-y-4">
-        {status === 'idle' && (
-          <button
-            onClick={startScanning}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-          >
-            Iniciar Lectura NFC
-          </button>
-        )}
+  // Iniciar el escaneo automáticamente al montar el componente
+  useEffect(() => {
+    startScanning()
+  }, [])
 
+  return (
+    <div className="p-4 rounded-lg shadow">
+      <div className="text-center space-y-4">
         {status === 'scanning' && (
           <div className="text-blue-500">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2" />
@@ -76,6 +72,7 @@ export default function NFCReader({ onRead }) {
               onClick={() => {
                 setStatus('idle')
                 setError(null)
+                startScanning() // Reiniciar el escaneo automáticamente
               }}
               className="mt-2 text-sm text-blue-500 hover:text-blue-600"
             >

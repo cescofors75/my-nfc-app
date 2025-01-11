@@ -1,251 +1,245 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import NFCVerificationModal from '@/components/NFCVerificationModal'
-import { toast } from 'sonner'
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import NFCVerificationModal from "@/components/NFCVerificationModal";
+import { toast } from "sonner";
 
 export function WristbandClient({ initialData, id }) {
-  const [wristband, setWristband] = useState(initialData.wristband)
-  const [transactions, setTransactions] = useState(initialData.transactions)
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [isVerifying, setIsVerifying] = useState(false)
-  const [pendingAction, setPendingAction] = useState(null)
-  const [lastTransactionTime, setLastTransactionTime] = useState(null)
+  const [wristband, setWristband] = useState(initialData.wristband);
+  const [transactions, setTransactions] = useState(initialData.transactions);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [lastTransactionTime, setLastTransactionTime] = useState(null);
+  const [processedTransactionIds, setProcessedTransactionIds] = useState(
+    new Set()
+  );
 
   const loadWristband = useCallback(async () => {
     try {
       const { data } = await supabase
-        .from('wristbands')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      setWristband(data)
-    } catch (err) {
-      setError(err.message)
-    }
-  }, [id])
+        .from("wristbands")
+        .select("*")
+        .eq("id", id)
+        .single();
 
- /* const loadTransactions = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          wristbands (
-            owner_name,
-            nfc_uid,
-            balance
-          )
-        `)
-        .eq('wristband_id', id)
-        .order('created_at', { ascending: true })
-      
-      if (!data || !wristband) return
-       // Log para debug
-    console.log('Datos originales:', data)
-    console.log('Primera transacción:', data[0])
-      // Calcular el saldo en el momento para cada transacción
-      const transactionsWithBalance = data.map((transaction, index, array) => {
-        // Calcular el saldo hasta este momento sumando todas las transacciones previas y la actual
-        const balanceAtMoment = array.slice(0, index + 1).reduce((acc, t) => {
-          if (t.type === 'DEPOSIT') {
-            return acc + Number(t.amount)
-          } else {
-            return acc - Number(t.amount)
-          }
-          // Log para debug
-        console.log(`Transacción ${index}:`, {
-          type: t.type,
-          amount: t.amount,
-          currentBalance: result
-        });
-        
-        return result;
-        }, 0)
-        
-        return {
-          ...transaction,
-          balanceAtMoment
-        }
-      })
-      
-      // Ordenar por fecha descendente para mostrar las más recientes primero
-      transactionsWithBalance.reverse()
-      
-      setTransactions(transactionsWithBalance)
+      setWristband(data);
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     }
-    console.log('Transacciones con balance:', transactionsWithBalance)
+  }, [id]);
 
-  }, [id, wristband])*/
   const loadTransactions = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('transactions')
-        .select(`
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          `
           *,
           wristbands (
             owner_name,
             nfc_uid,
             balance
           )
-        `)
-        .eq('wristband_id', id)
-        .order('created_at', { ascending: true })
-      
-      if (!data || !wristband) {
-        console.log('No hay datos o wristband')
-        return
-      }
-  
-      let saldoActual = 0
-      const transactionsWithBalance = []
-  
-      for (const transaction of data) {
-        if (transaction.type === 'DEPOSIT') {
-          saldoActual += Number(transaction.amount)
-        } else if (transaction.type === 'PURCHASE') {
-          saldoActual -= Number(transaction.amount)
-        }
-  
-        transactionsWithBalance.push({
-          ...transaction,
-          balanceAtMoment: saldoActual
-        })
-      }
-  
-      // Invertimos el array para mostrar las más recientes primero
-      transactionsWithBalance.reverse()
-      
-      setTransactions(transactionsWithBalance)
-    } catch (err) {
-      console.error('Error en loadTransactions:', err)
-      setError(err.message)
-    }
-  }, [id, wristband])
-  // Añadir un useEffect para ver cuando se llama a loadTransactions
-  /*useEffect(() => {
-    console.log('Llamando a loadTransactions')
-    loadTransactions()
-  }, [loadTransactions])*/
+        `
+        )
+        .eq("wristband_id", id)
+        .order("created_at", { ascending: true });
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('realtime-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-          filter: `wristband_id=eq.${id}`,
-        },
-        (payload) => {
-          // Verificamos que el cambio sea relevante para este componente
-          if (payload.new && payload.new.wristband_id === id) {
-            loadWristband()
-            loadTransactions()
-          }
+      if (error) throw error;
+
+      if (!data || !wristband) {
+        console.error("No hay datos o wristband");
+        return;
+      }
+
+      // Crear un nuevo Set con las IDs de las transacciones actuales
+      const currentTransactionIds = new Set(data.map((t) => t.id));
+      setProcessedTransactionIds(currentTransactionIds);
+
+      let saldoActual = 0;
+      const transactionsWithBalance = data.map((transaction) => {
+        if (transaction.type === "DEPOSIT") {
+          saldoActual += Number(transaction.amount);
+        } else if (transaction.type === "PURCHASE") {
+          saldoActual -= Number(transaction.amount);
         }
-      )
-      .subscribe()
+
+        return {
+          ...transaction,
+          balanceAtMoment: saldoActual,
+        };
+      });
+
+      // Invertimos el array para mostrar las más recientes primero
+      setTransactions(transactionsWithBalance.reverse());
+    } catch (err) {
+      console.error("Error en loadTransactions:", err);
+      setError(err.message);
+    }
+  }, [id, wristband]);
   
-    // Cargamos los datos iniciales una vez
-    loadTransactions()
+  useEffect(() => {
+    let mounted = true;
+    let channel;
+  
+    const handleNewTransaction = async (payload) => {
+      if (!mounted) return;
+  
+      const newTransaction = payload.new;
+  
+      // Verificar si la transacción ya ha sido procesada
+      if (processedTransactionIds.has(newTransaction.id)) {
+        return;
+      }
+  
+      try {
+        // Actualizar wristband
+        await loadWristband();
+        
+        // Esperar a que termine la actualización del wristband antes de cargar transacciones
+        if (mounted) {
+          await loadTransactions();
+        }
+      } catch (err) {
+        console.error("Error procesando nueva transacción:", err);
+      }
+    };
+  
+    const setupRealtimeSubscription = async () => {
+      // Cargar datos iniciales
+      await Promise.all([loadWristband(), loadTransactions()]);
+  
+      // Configurar suscripción en tiempo real
+      channel = supabase
+        .channel(`transactions-${id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "transactions",
+            filter: `wristband_id=eq.${id}`,
+          },
+          (payload) => {
+            if (mounted && payload.new.wristband_id === id) {
+              handleNewTransaction(payload);
+            }
+          }
+        )
+        .subscribe();
+    };
+  
+    setupRealtimeSubscription();
   
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [id, loadWristband, loadTransactions])
-
-  const verifyAndExecute = (action, actionData) => {
-    setPendingAction({ type: action, data: actionData })
-    setIsVerifying(true)
-  }
-
+      mounted = false;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [id, loadWristband, loadTransactions, processedTransactionIds]);
   
-const handleVerificationSuccess = async () => {
-  setIsVerifying(false)
-  setError(null)
+  const verifyAndExecute = (action, actionData) => {
+    setPendingAction({ type: action, data: actionData });
+    setIsVerifying(true);
+  };
 
-  const now = Date.now()
-  const COOLDOWN_PERIOD = 10000 // 10 segundos
+  const handleVerificationSuccess = async () => {
+    setIsVerifying(false);
+    setError(null);
 
-  if (lastTransactionTime && (now - lastTransactionTime) < COOLDOWN_PERIOD) {
-    const remainingSeconds = Math.ceil((COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000)
-    toast.error(`Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`)
-    setPendingAction(null)
-    return
-  }
+    const now = Date.now();
+    const COOLDOWN_PERIOD = 10000; // 10 segundos
 
-  setLoading(true)
+    if (lastTransactionTime && now - lastTransactionTime < COOLDOWN_PERIOD) {
+      const remainingSeconds = Math.ceil(
+        (COOLDOWN_PERIOD - (now - lastTransactionTime)) / 1000
+      );
+      toast.error(
+        `Por seguridad, espera ${remainingSeconds} segundos para realizar otra transacción`
+      );
+      setPendingAction(null);
+      return;
+    }
 
-  try {
-    if (pendingAction.type === 'ADD_MONEY') {
-      const { error } = await supabase
-        .from('transactions')
-        .insert({
-          wristband_id: id,
-          type: 'DEPOSIT',
-          amount: Number(pendingAction.data.amount)
-        })
+    setLoading(true);
 
-      if (error) throw error
-      
-      // No necesitamos llamar a loadTransactions aquí
-      // porque el evento en tiempo real se encargará de ello
-      setAmount('')
-      setLastTransactionTime(Date.now())
-    } else if (pendingAction.type === 'SPEND_MONEY') {
-      if (wristband.balance < Number(pendingAction.data.amount)) {
-        throw new Error('Saldo insuficiente')
+    try {
+      let transactionData = {
+        wristband_id: id,
+        created_at: new Date().toISOString(), // Asegurar timestamp único
+        amount: Number(pendingAction.data.amount),
+      };
+
+      if (pendingAction.type === "ADD_MONEY") {
+        transactionData = {
+          ...transactionData,
+          type: "DEPOSIT",
+        };
+      } else if (pendingAction.type === "SPEND_MONEY") {
+        // Verificar saldo nuevamente antes de realizar el gasto
+        const { data: currentWristband, error: wristbandError } = await supabase
+          .from("wristbands")
+          .select("balance")
+          .eq("id", id)
+          .single();
+
+        if (wristbandError) throw wristbandError;
+
+        if (currentWristband.balance < Number(pendingAction.data.amount)) {
+          throw new Error("Saldo insuficiente");
+        }
+
+        transactionData = {
+          ...transactionData,
+          type: "PURCHASE",
+          description: pendingAction.data.description,
+        };
       }
 
-      const { error } = await supabase
-        .from('transactions')
-        .insert({
-          wristband_id: id,
-          type: 'PURCHASE',
-          amount: Number(pendingAction.data.amount),
-          description: pendingAction.data.description
-        })
+      const { error: insertError } = await supabase
+        .from("transactions")
+        .insert(transactionData);
 
-      if (error) throw error
-      
+      if (insertError) throw insertError;
+
+      setAmount("");
+      setDescription("");
+      setLastTransactionTime(Date.now());
+
       // No necesitamos llamar a loadTransactions aquí
-      // porque el evento en tiempo real se encargará de ello
-      setAmount('')
-      setDescription('')
-      setLastTransactionTime(Date.now())
+      // El manejador de eventos en tiempo real se encargará de actualizar los datos
+    } catch (err) {
+      console.error("Error en la transacción:", err);
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+      setPendingAction(null);
     }
-  } catch (err) {
-    setError(err.message)
-  } finally {
-    setLoading(false)
-    setPendingAction(null)
-  }
-}
+  };
+
   const handleAddMoney = () => {
-    if (!amount) return
-    verifyAndExecute('ADD_MONEY', { amount })
-  }
+    if (!amount) return;
+    verifyAndExecute("ADD_MONEY", { amount });
+  };
 
   const handleSpendMoney = () => {
-    if (!amount || !description) return
-    verifyAndExecute('SPEND_MONEY', { amount, description })
-  }
+    if (!amount || !description) return;
+    verifyAndExecute("SPEND_MONEY", { amount, description });
+  };
 
-  if (!wristband) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white" />
-    </div>
-  )
+  if (!wristband)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white" />
+      </div>
+    );
 
   return (
     <>
@@ -257,10 +251,14 @@ const handleVerificationSuccess = async () => {
           </h1>
           <div className="flex items-center justify-between">
             <span className="text-gray-600 dark:text-gray-400">ID NFC:</span>
-            <span className="font-mono text-gray-900 dark:text-white">{wristband.nfc_uid}</span>
+            <span className="font-mono text-gray-900 dark:text-white">
+              {wristband.nfc_uid}
+            </span>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-gray-600 dark:text-gray-400">Saldo actual:</span>
+            <span className="text-gray-600 dark:text-gray-400">
+              Saldo actual:
+            </span>
             <span className="text-2xl font-bold text-green-600 dark:text-green-400">
               {wristband.balance.toFixed(2)}€
             </span>
@@ -293,7 +291,7 @@ const handleVerificationSuccess = async () => {
                 disabled={loading}
                 className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
               >
-                {loading ? 'Procesando...' : 'Añadir Saldo'}
+                {loading ? "Procesando..." : "Añadir Saldo"}
               </button>
             </div>
           </div>
@@ -334,7 +332,7 @@ const handleVerificationSuccess = async () => {
                 disabled={loading}
                 className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
               >
-                {loading ? 'Procesando...' : 'Realizar Gasto'}
+                {loading ? "Procesando..." : "Realizar Gasto"}
               </button>
             </div>
           </div>
@@ -377,40 +375,43 @@ const handleVerificationSuccess = async () => {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <tr
+                      key={transaction.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {new Date(transaction.created_at).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            transaction.type === 'DEPOSIT'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+                            transaction.type === "DEPOSIT"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
                           }`}
                         >
-                          {transaction.type === 'DEPOSIT' ? 'Ingreso' : 'Gasto'}
+                          {transaction.type === "DEPOSIT" ? "Ingreso" : "Gasto"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span
-                          className={transaction.type === 'DEPOSIT' 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-red-600 dark:text-red-400'
+                          className={
+                            transaction.type === "DEPOSIT"
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
                           }
                         >
-                          {transaction.type === 'DEPOSIT' ? '+' : '-'}
+                          {transaction.type === "DEPOSIT" ? "+" : "-"}
                           {transaction.amount.toFixed(2)}€
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-  {typeof transaction.balanceAtMoment === 'number' 
-    ? `${transaction.balanceAtMoment.toFixed(2)}€`
-    : '-'
-  }
-</td>
+                        {typeof transaction.balanceAtMoment === "number"
+                          ? `${transaction.balanceAtMoment.toFixed(2)}€`
+                          : "-"}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {transaction.description || '-'}
+                        {transaction.description || "-"}
                       </td>
                     </tr>
                   ))}
@@ -428,35 +429,35 @@ const handleVerificationSuccess = async () => {
                   <div className="flex justify-between items-start">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        transaction.type === 'DEPOSIT'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+                        transaction.type === "DEPOSIT"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
                       }`}
                     >
-                      {transaction.type === 'DEPOSIT' ? 'Ingreso' : 'Gasto'}
+                      {transaction.type === "DEPOSIT" ? "Ingreso" : "Gasto"}
                     </span>
                     <span
                       className={`text-lg font-bold ${
-                        transaction.type === 'DEPOSIT'
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
+                        transaction.type === "DEPOSIT"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
                       }`}
                     >
-                      {transaction.type === 'DEPOSIT' ? '+' : '-'}
+                      {transaction.type === "DEPOSIT" ? "+" : "-"}
                       {transaction.amount.toFixed(2)}€
                     </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400">
                       {new Date(transaction.created_at).toLocaleString()}
                     </span>
                     <span className="font-medium text-gray-900 dark:text-white">
-  Saldo: {typeof transaction.balanceAtMoment === 'number' 
-    ? `${transaction.balanceAtMoment.toFixed(2)}€`
-    : '-'
-  }
-</span>
+                      Saldo:{" "}
+                      {typeof transaction.balanceAtMoment === "number"
+                        ? `${transaction.balanceAtMoment.toFixed(2)}€`
+                        : "-"}
+                    </span>
                   </div>
 
                   {transaction.description && (
@@ -474,13 +475,17 @@ const handleVerificationSuccess = async () => {
       <NFCVerificationModal
         isOpen={isVerifying}
         onClose={() => {
-          setIsVerifying(false)
-          setPendingAction(null)
+          setIsVerifying(false);
+          setPendingAction(null);
         }}
         onVerify={handleVerificationSuccess}
         expectedNfcUid={wristband.nfc_uid}
-        action={pendingAction?.type === 'ADD_MONEY' ? 'añadir saldo' : 'realizar el gasto'}
+        action={
+          pendingAction?.type === "ADD_MONEY"
+            ? "añadir saldo"
+            : "realizar el gasto"
+        }
       />
     </>
-  )
+  );
 }

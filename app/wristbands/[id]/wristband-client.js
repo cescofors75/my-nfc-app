@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import NFCVerificationModal from "@/components/NFCVerificationModal";
 import { toast } from "sonner";
@@ -19,7 +20,7 @@ export function WristbandClient({ initialData, id }) {
     new Set()
   );
 
-  const loadWristband = useCallback(async () => {
+  const loadWristband = async () => {
     try {
       const { data } = await supabase
         .from("wristbands")
@@ -31,9 +32,9 @@ export function WristbandClient({ initialData, id }) {
     } catch (err) {
       setError(err.message);
     }
-  }, [id]);
+  }
 
-  const loadTransactions = useCallback(async () => {
+  const loadTransactions = async () => {
     try {
       const { data, error } = await supabase
         .from("transactions")
@@ -81,8 +82,7 @@ export function WristbandClient({ initialData, id }) {
       console.error("Error en loadTransactions:", err);
       setError(err.message);
     }
-  }, [id, wristband]);
-  
+  }
   useEffect(() => {
     let mounted = true;
     let channel;

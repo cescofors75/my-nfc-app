@@ -133,16 +133,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="rounded-lg shadow p-6">
+      <div className=" grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Total Ingresos (24h)</h3>
           <p className="text-2xl font-bold text-green-600">+{totals.deposits.toFixed(2)}€</p>
         </div>
-        <div className=" rounded-lg shadow p-6">
+        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Total Ventas (24h)</h3>
           <p className="text-2xl font-bold text-red-600">-{totals.purchases.toFixed(2)}€</p>
         </div>
-        <div className=" rounded-lg shadow p-6">
+        <div className="dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm uppercase">Balance Total</h3>
           <p className="text-2xl font-bold text-blue-600">
             {(totals.deposits - totals.purchases).toFixed(2)}€
@@ -157,7 +157,7 @@ export default function DashboardPage() {
           <Link
             key={wristband.id}
             href={`/wristbands/${wristband.id}`}
-            className="block  rounded-lg shadow hover:shadow-md transition-shadow"
+            className="block dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
           >
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-2">{wristband.owner_name}</h2>

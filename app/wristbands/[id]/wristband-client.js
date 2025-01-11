@@ -477,9 +477,10 @@ useEffect(() => {
                           : "bg-red-100 dark:bg-red-900"
                       }`}>
                         {transaction.type === "DEPOSIT" ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <Download className="h-4 w-4 sm:mr-2" />
+                          
                         ) : (
-                          <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">

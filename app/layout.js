@@ -7,7 +7,7 @@ import './globals.css'
 import { Providers } from './providers'
 import Navbar from '@/components/Navbar'
 import QuickScan from '@/components/QuickScan'
-
+import { Toaster } from 'sonner'
 export default function RootLayout({children }) {
   const [isQuickScanOpen, setIsQuickScanOpen] = useState(false)
 
@@ -21,6 +21,7 @@ export default function RootLayout({children }) {
           {/* Main content */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
+            <Toaster richColors position="top-right" />
           </main>
 
           {/* Modal de lectura rápida */}

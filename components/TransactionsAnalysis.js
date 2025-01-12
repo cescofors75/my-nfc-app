@@ -273,15 +273,15 @@ const TransactionAnalysis = () => {
   }, [transactions, processTransactions]);
 
   return (
-    <div className="w-full p-2 sm:p-4 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-h-[500px] transition-colors">
+    <div className="w-full p-1 sm:p-1 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-h-[500px] transition-colors">
       {error && (
         <div className="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-500 rounded-lg text-red-500">
           Error: {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg transition-colors">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+        <div className="bg-gray-50 dark:bg-slate-800 p-2 rounded-lg transition-colors">
           <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Total Depósitos</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-500">
             +{formatValue(stats.totalIncomes)}

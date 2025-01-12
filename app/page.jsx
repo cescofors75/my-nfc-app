@@ -159,7 +159,7 @@ export default function DashboardPage() {
             {wristbands.map((wristband) => (
               <Link
                 key={wristband.id}
-                href={`/wristbands/\${wristband.id}`}
+                href={"/wristbands/" + wristband.id}
               >
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500">
                   <div className="flex items-center justify-between mb-4">

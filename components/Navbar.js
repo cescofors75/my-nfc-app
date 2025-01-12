@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import Link from 'next/link'
+//import ConfigSettings from '@/components/ConfigSettings'
 export default function Navbar({ setIsQuickScanOpen }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -20,11 +21,12 @@ export default function Navbar({ setIsQuickScanOpen }) {
         realtime transactions
       </p>
       </div>
+
     </Link>
     
 
           {/* Navegación Desktop */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex justify-end items-center space-x-4 ml-60">
             <button
               onClick={() => window.location.href='/'}
               className="flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
@@ -77,11 +79,13 @@ export default function Navbar({ setIsQuickScanOpen }) {
             </button>
 
             <ThemeToggle />
+           
           </div>
 
           {/* Botón de menú móvil */}
           <div className="md:hidden flex items-center">
             <ThemeToggle />
+           
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="ml-4 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"

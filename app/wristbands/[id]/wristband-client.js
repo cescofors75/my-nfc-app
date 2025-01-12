@@ -21,7 +21,7 @@ export function WristbandClient({ initialData, id }) {
   const [description, setDescription] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
   const [filter, setFilter] = useState('all');
-
+ 
   const defaultInitialData = {
     wristband: {
       owner_name: '',
@@ -80,7 +80,10 @@ export function WristbandClient({ initialData, id }) {
           balanceAtMoment: saldoAcumulado,
         };
       });
-
+      setWristband(prev => ({
+        ...prev,
+        saldoCalculado: saldoAcumulado // Añadir saldo calculado
+      }));
       setTransactions(transactionsWithBalance.reverse());
     } catch (err) {
       console.error('Error en loadTransactions:', err);
@@ -342,7 +345,8 @@ export function WristbandClient({ initialData, id }) {
         </button>
       </div>
     </div>
-    <TransactionsDonut transactions={filteredTransactions} />
+    
+    <TransactionsDonut wristbandId={id} />
     <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
       {filteredTransactions.length > 0 ? (
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">

@@ -12,15 +12,7 @@ const SimpleVerificationModal = ({
   loading 
 }) => {
   if (!isOpen) return null;
-  console.log('action', action);
-  console.log('wristband', wristband);
-  console.log('amount', amount);
-  console.log('description', description);
-  console.log('loading', loading);
-  console.log('isDeposit', action?.type === "ADD_MONEY"); 
-  console.log('isOpen', isOpen);
-  console.log('onClose', onClose);
-  console.log('onConfirm', onConfirm);
+
   const isDeposit = action?.type === "ADD_MONEY";
 
   return (
@@ -54,7 +46,7 @@ const SimpleVerificationModal = ({
             <p className={`text-3xl font-bold mt-2 ${
               isDeposit ? 'text-green-600' : 'text-red-600'
             }`}>
-              ${Number(amount).toFixed(2)}
+              {Number(amount).toFixed(2)} €
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               {isDeposit 
@@ -69,13 +61,13 @@ const SimpleVerificationModal = ({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Saldo actual:</span>
                 <span className="font-medium text-gray-900 dark:text-white">
-                  ${wristband.balance.toFixed(2)}
+                  {wristband.balance.toFixed(2)} €
                 </span>
               </div>
               <div className="flex justify-between text-sm mt-1">
                 <span className="text-gray-600 dark:text-gray-400">Saldo resultante:</span>
                 <span className="font-medium text-gray-900 dark:text-white">
-                  ${(wristband.balance - Number(amount)).toFixed(2)}
+                  {(wristband.balance - Number(amount)).toFixed(2)} €
                 </span>
               </div>
             </div>

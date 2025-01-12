@@ -223,7 +223,7 @@ export function WristbandClient({ initialData, id }) {
         <div className="text-right">
           <p className="text-sm text-gray-500 dark:text-gray-400">Saldo actual</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-          ${(wristband?.balance || 0).toFixed(2)}
+          {(wristband?.balance || 0).toFixed(2)} €
           </p>
         </div>
       </div>
@@ -238,7 +238,7 @@ export function WristbandClient({ initialData, id }) {
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Añadir dinero
+                Depósito - Añadir dinero
               </h3>
               <div className="mt-5">
                 <div className="rounded-md shadow-sm">

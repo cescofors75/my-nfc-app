@@ -227,14 +227,14 @@ export default function TransactionsChart() {
     incomesSeriesRef.current = chartRef.current.addLineSeries({
       color: '#10B981',
       lineWidth: 2,
-      title: 'Ingresos',
+      title: 'Depósitos',
       visible: !showAccumulated
     })
 
     expensesSeriesRef.current = chartRef.current.addLineSeries({
       color: '#EF4444',
       lineWidth: 2,
-      title: 'Ventas',
+      title: 'Compras',
       visible: !showAccumulated
     })
 
@@ -329,13 +329,13 @@ export default function TransactionsChart() {
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Ingresos</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Total Depósitos</div>
             <div className="text-2xl font-bold text-green-500">
               +{stats.totalIncomes.toFixed(2)}€
             </div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Ventas</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Total Compras</div>
             <div className="text-2xl font-bold text-red-500">
               -{stats.totalExpenses.toFixed(2)}€
             </div>

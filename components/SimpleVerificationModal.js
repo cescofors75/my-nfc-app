@@ -12,7 +12,15 @@ const SimpleVerificationModal = ({
   loading 
 }) => {
   if (!isOpen) return null;
-  
+  console.log('action', action);
+  console.log('wristband', wristband);
+  console.log('amount', amount);
+  console.log('description', description);
+  console.log('loading', loading);
+  console.log('isDeposit', action?.type === "ADD_MONEY"); 
+  console.log('isOpen', isOpen);
+  console.log('onClose', onClose);
+  console.log('onConfirm', onConfirm);
   const isDeposit = action?.type === "ADD_MONEY";
 
   return (

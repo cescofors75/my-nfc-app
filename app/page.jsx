@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import TransactionsTable from '@/components/TransactionsTable'
 import TransactionsChart from '@/components/TransactionsChart'
 import { CreditCard, Loader2 } from 'lucide-react'
+import TransactionsAnalysis from '@/components/TransactionsAnalysis'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
@@ -191,7 +192,9 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-
+        <div className="mb-8">
+          <TransactionsAnalysis  />
+        </div>
         {/* Gráfico de transacciones */}
         <div className="mb-8">
           <TransactionsChart />

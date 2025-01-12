@@ -32,52 +32,8 @@ export default function TransactionsChart() {
   const accumulatedSeriesRef = useRef(null)
   const channelRef = useRef(null)
 
-  // Función mejorada para procesar transacciones
-  /*const processTransactions = useCallback((transactions) => {
-    console.log('📊 Procesando transacciones:', transactions.length)
-    const timeMap = new Map()
-    let runningIncomes = 0
-    let runningExpenses = 0
-    
-    const filteredTransactions = transactions
-      .filter(shouldIncludeTransaction)
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    
-    console.log('🔍 Transacciones filtradas:', filteredTransactions.length)
-    
-    filteredTransactions.forEach(t => {
-      const timestamp = Math.floor(new Date(t.created_at).getTime() / 1000)
-      if (!timeMap.has(timestamp)) {
-        timeMap.set(timestamp, { incomes: 0, expenses: 0, accumulated: 0 })
-      }
-      
-      const amount = Number(t.amount || 0)
-      if (t.type === 'DEPOSIT') {
-        timeMap.get(timestamp).incomes += amount
-        runningIncomes += amount
-      } else {
-        timeMap.get(timestamp).expenses += amount
-        runningExpenses += amount
-      }
-      
-      timeMap.get(timestamp).accumulated = runningIncomes - runningExpenses
-    })
+ 
 
-    const sortedTimes = Array.from(timeMap.entries()).sort((a, b) => a[0] - b[0])
-    
-    console.log('💰 Totales actualizados:', { runningIncomes, runningExpenses })
-    setStats({
-      totalIncomes: runningIncomes,
-      totalExpenses: runningExpenses,
-      accumulated: runningIncomes - runningExpenses
-    })
-
-    return {
-      incomes: sortedTimes.map(([time, data]) => ({ time, value: data.incomes })),
-      expenses: sortedTimes.map(([time, data]) => ({ time, value: data.expenses })),
-      accumulated: sortedTimes.map(([time, data]) => ({ time, value: data.accumulated }))
-    }
-  }, [])*/
 
   // Función mejorada para obtener transacciones
   const fetchTransactions = useCallback(async () => {

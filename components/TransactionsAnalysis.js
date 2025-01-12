@@ -18,7 +18,7 @@ const TransactionAnalysis = () => {
 
   // Generar datos que reflejen el comportamiento real
   const rawData = useMemo(() => {
-    const now = new Date();
+    //const now = new Date();
     let dataPoints;
     let format;
     

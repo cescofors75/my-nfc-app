@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import NFCVerificationModal from "@/components/NFCVerificationModal";
 // import { toast } from "sonner";

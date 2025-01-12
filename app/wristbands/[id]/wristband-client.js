@@ -8,6 +8,7 @@ import SimpleVerificationModal from "@/components/SimpleVerificationModal";
 import { Wallet, Download, ShoppingCart, Clock } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import TransactionsDonut from "@/components/TransactionsDonut";
 
 export function WristbandClient({ initialData, id }) {
   const [wristband, setWristband] = useState(initialData.wristband);
@@ -341,7 +342,7 @@ export function WristbandClient({ initialData, id }) {
         </button>
       </div>
     </div>
-
+    <TransactionsDonut transactions={filteredTransactions} />
     <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
       {filteredTransactions.length > 0 ? (
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">

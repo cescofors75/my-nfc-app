@@ -127,20 +127,56 @@ export function WristbandClient({ initialData, id }) {
     if (filter === 'purchases') return transaction.type === 'PURCHASE';
     return true;
   });
+ 
+  
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return `Hoy ${format(date, 'HH:mm')}`;
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return `Ayer ${format(date, 'HH:mm')}`;
-    } else {
-      return format(date, "d MMM yyyy HH:mm", { locale: es });
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+  
+    // Si han pasado menos de 60 segundos
+    if (diffInSeconds < 60) {
+      if (diffInSeconds <= 5) {
+        return 'Hace unos segundos';
+      }
+      return `Hace ${diffInSeconds} segundos`;
     }
+  
+    // Si han pasado menos de 60 minutos
+    if (diffInMinutes < 60) {
+      if (diffInMinutes === 1) {
+        return 'Hace 1 minuto';
+      }
+      return `Hace ${diffInMinutes} minutos`;
+    }
+  
+    // Si han pasado menos de 24 horas
+    if (diffInHours < 24) {
+      if (diffInHours === 1) {
+        return 'Hace 1 hora';
+      }
+      return `Hace ${diffInHours} horas`;
+    }
+  
+    // Si han pasado menos de 7 días
+    if (diffInDays < 7) {
+      if (diffInDays === 1) {
+        return `Ayer a las ${format(date, 'HH:mm')}`;
+      }
+      return `Hace ${diffInDays} días`;
+    }
+  
+    // Si es del año actual
+    if (date.getFullYear() === now.getFullYear()) {
+      return format(date, "d 'de' MMMM 'a las' HH:mm", { locale: es });
+    }
+  
+    // Para fechas de años anteriores
+    return format(date, "d 'de' MMMM 'de' yyyy 'a las' HH:mm", { locale: es });
   };
 
   const verifyAndExecute = (action, actionData) => {

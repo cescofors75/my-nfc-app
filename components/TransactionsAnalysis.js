@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
-import {  LineChart as LineChartIcon, BarChart3 } from 'lucide-react';
+import { LineChart as LineChartIcon, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 const TIME_RANGES = {
@@ -19,6 +19,28 @@ const TIME_RANGES = {
   '24H': '24 horas',
   '7D': '7 días',
   '30D': '30 días'
+};
+
+const formatValue = (value) => {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M €`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}K €`;
+  return `${value.toFixed(2)} €`;
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  
+  return (
+    <div className="bg-white/90 dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-700 shadow-lg">
+      <p className="text-gray-600 dark:text-gray-400 mb-2">{label}</p>
+      {payload.map((entry, index) => (
+        <p key={index} className="flex items-center gap-2" style={{ color: entry.color }}>
+          <span className="font-semibold">{entry.name}:</span>
+          <span>{entry.value.toFixed(2)}€</span>
+        </p>
+      ))}
+    </div>
+  );
 };
 
 const TransactionAnalysis = () => {
@@ -33,10 +55,35 @@ const TransactionAnalysis = () => {
     accumulated: 0
   });
 
-  // Función mejorada para obtener transacciones
+  const shouldIncludeTransaction = useCallback((transaction) => {
+    const now = new Date();
+    const transactionDate = new Date(transaction.created_at);
+    let timeLimit;
+
+    switch (timeRange) {
+      case '30MIN':
+        timeLimit = 30 * 60 * 1000; // 30 minutes in milliseconds
+        break;
+      case '1H':
+        timeLimit = 60 * 60 * 1000; // 1 hour in milliseconds
+        break;
+      case '24H':
+        timeLimit = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        break;
+      case '7D':
+        timeLimit = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+        break;
+      case '30D':
+        timeLimit = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+        break;
+      default:
+        return true;
+    }
+
+    return (now.getTime() - transactionDate.getTime()) <= timeLimit;
+  }, [timeRange]);
+
   const fetchTransactions = useCallback(async () => {
-    setError(null);
-    console.log('🔄 Obteniendo transacciones para:', timeRange);
     try {
       let query = supabase
         .from('transactions')
@@ -65,36 +112,60 @@ const TransactionAnalysis = () => {
       }
 
       if (startTime) {
-        const formattedDate = startTime.toISOString();
-        console.log('🕒 Fecha de inicio:', formattedDate);
-        query = query.gte('created_at', formattedDate);
+        query = query.gte('created_at', startTime.toISOString());
       }
 
       const { data, error: supabaseError } = await query;
 
-      if (supabaseError) {
-        console.error('❌ Error obteniendo transacciones:', supabaseError);
-        setError(supabaseError.message);
-        return [];
-      }
+      if (supabaseError) throw supabaseError;
 
-      console.log('✅ Transacciones obtenidas:', data?.length);
       return data || [];
     } catch (error) {
-      console.error('❌ Error inesperado:', error);
-      setError(error.message);
-      return [];
+      console.error('Error fetching transactions:', error);
+      throw error;
     }
   }, [timeRange]);
 
-  // Función para procesar las transacciones
+  const handleRealtimeTransaction = useCallback((payload) => {
+    console.log('🔔 Realtime event received:', payload);
+    
+    setTransactions(currentTransactions => {
+      const { eventType, new: newTransaction, old: oldTransaction } = payload;
+      let updatedTransactions = [...currentTransactions];
+
+      switch (eventType) {
+        case 'INSERT':
+          if (shouldIncludeTransaction(newTransaction)) {
+            console.log('➕ New transaction inserted:', newTransaction);
+            updatedTransactions = [...updatedTransactions, newTransaction];
+          }
+          break;
+
+        case 'UPDATE':
+          console.log('✏️ Transaction updated:', newTransaction);
+          updatedTransactions = updatedTransactions.map(t => 
+            t.id === newTransaction.id ? newTransaction : t
+          );
+          break;
+
+        case 'DELETE':
+          console.log('❌ Transaction deleted:', oldTransaction);
+          updatedTransactions = updatedTransactions.filter(t => 
+            t.id !== oldTransaction.id
+          );
+          break;
+      }
+
+      return updatedTransactions.sort((a, b) => 
+        new Date(a.created_at) - new Date(b.created_at)
+      );
+    });
+  }, [shouldIncludeTransaction]);
+
   const processTransactions = useCallback((transactions) => {
-    console.log('📊 Procesando transacciones:', transactions.length);
     const timeMap = new Map();
     let runningIncomes = 0;
     let runningExpenses = 0;
-
-    transactions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
     transactions.forEach(t => {
       const date = new Date(t.created_at);
@@ -138,7 +209,6 @@ const TransactionAnalysis = () => {
 
     let chartData = Array.from(timeMap.values());
 
-    // Aplicar acumulado si está activado
     if (showAccumulated) {
       let accumulatedDeposits = 0;
       let accumulatedPurchases = 0;
@@ -152,86 +222,99 @@ const TransactionAnalysis = () => {
     return chartData;
   }, [timeRange, showAccumulated]);
 
-  // Efecto para cargar datos iniciales
   useEffect(() => {
-    setLoading(true);
-    fetchTransactions()
-      .then(data => {
-        setTransactions(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error en fetchTransactions:', err);
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [fetchTransactions]);
+    let subscription;
 
-  // Procesar datos para el gráfico
+    const initializeData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch initial data
+        const data = await fetchTransactions();
+        setTransactions(data);
+        
+        // Setup realtime subscription
+        subscription = supabase
+          .channel('transactions-channel')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'transactions'
+            },
+            handleRealtimeTransaction
+          )
+          .subscribe((status) => {
+            console.log('🔌 Subscription status:', status);
+          });
+
+      } catch (err) {
+        console.error('Error initializing data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+
+    return () => {
+      if (subscription) {
+        console.log('🔌 Unsubscribing from realtime channel');
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [fetchTransactions, handleRealtimeTransaction]);
+
   const data = useMemo(() => {
     return processTransactions(transactions);
   }, [transactions, processTransactions]);
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload || !payload.length) return null;
-    
-    return (
-      <div className="bg-slate-800 p-3 rounded-lg border border-slate-700 shadow-lg">
-        <p className="text-gray-400 mb-2">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={index} className="flex items-center gap-2" style={{ color: entry.color }}>
-            <span className="font-semibold">{entry.name}:</span>
-            <span>{entry.value.toFixed(2)}€</span>
-          </p>
-        ))}
-      </div>
-    );
-  };
-
-  const formatValue = (value) => {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M €`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}K €`;
-    return `${value.toFixed(2)} €`;
-  };
-
   return (
-    <div className="w-full p-2 sm:p-4 bg-slate-900 text-white min-h-[500px]">
+    <div className="w-full p-2 sm:p-4 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-h-[500px] transition-colors">
       {error && (
-        <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500">
+        <div className="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-500 rounded-lg text-red-500">
           Error: {error}
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-slate-800 p-4 rounded-lg">
-          <div className="text-gray-400 text-sm mb-2">Total Depósitos</div>
-          <div className="text-2xl font-bold text-green-500">
+        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg transition-colors">
+          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Total Depósitos</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-500">
             +{formatValue(stats.totalIncomes)}
           </div>
         </div>
-        <div className="bg-slate-800 p-4 rounded-lg">
-          <div className="text-gray-400 text-sm mb-2">Total Compras</div>
-          <div className="text-2xl font-bold text-red-500">
+        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg transition-colors">
+          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Total Compras</div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-500">
             -{formatValue(stats.totalExpenses)}
           </div>
         </div>
-        <div className="bg-slate-800 p-4 rounded-lg">
-          <div className="text-gray-400 text-sm mb-2">Balance Total</div>
-          <div className={`text-2xl font-bold ${stats.accumulated >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg transition-colors">
+          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Balance Total</div>
+          <div className={`text-2xl font-bold ${
+            stats.accumulated >= 0 
+              ? 'text-green-600 dark:text-green-500' 
+              : 'text-red-600 dark:text-red-500'
+          }`}>
             {stats.accumulated >= 0 ? '+' : ''}{formatValue(stats.accumulated)}
           </div>
         </div>
       </div>
 
-      {/* Header y Controles */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2 relative">
           <h2 className="text-lg font-semibold">Análisis de Transacciones</h2>
           <button 
             onClick={() => setShowAccumulated(!showAccumulated)}
             className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-colors
-              ${showAccumulated ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-slate-800'}`}
+              ${showAccumulated 
+                ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400' 
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
           >
             {showAccumulated ? (
               <>
@@ -247,7 +330,6 @@ const TransactionAnalysis = () => {
           </button>
         </div>
         
-        {/* Controles de tiempo responsive */}
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {Object.entries(TIME_RANGES).map(([key, label]) => (
             <button
@@ -255,7 +337,8 @@ const TransactionAnalysis = () => {
               className={`px-3 py-1 rounded-md text-sm transition-colors flex-1 sm:flex-none
                 ${timeRange === key 
                   ? 'bg-blue-500 text-white' 
-                  : 'bg-slate-800 text-gray-400 hover:bg-slate-700'}`}
+                  : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                }`}
               onClick={() => setTimeRange(key)}
             >
               {label}
@@ -264,7 +347,6 @@ const TransactionAnalysis = () => {
         </div>
       </div>
 
-      {/* Chart Container */}
       <div className="h-[400px] sm:h-[500px]">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -276,18 +358,24 @@ const TransactionAnalysis = () => {
               data={data} 
               margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke="rgba(148, 163, 184, 0.1)" 
+                className="dark:opacity-20"
+              />
               <XAxis
                 dataKey="time"
-                stroke="#94a3b8"
-                tick={{ fill: '#94a3b8' }}
-                tickLine={{ stroke: '#94a3b8' }}
+                stroke="rgb(148, 163, 184)"
+                tick={{ fill: 'currentColor' }}
+                tickLine={{ stroke: 'currentColor' }}
+                className="text-gray-600 dark:text-gray-400"
                 reversed={true}
               />
               <YAxis
-                stroke="#94a3b8"
-                tick={{ fill: '#94a3b8' }}
-                tickLine={{ stroke: '#94a3b8' }}
+                stroke="rgb(148, 163, 184)"
+                tick={{ fill: 'currentColor' }}
+                tickLine={{ stroke: 'currentColor' }}
+                className="text-gray-600 dark:text-gray-400"
                 domain={[0, 'auto']}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -296,7 +384,7 @@ const TransactionAnalysis = () => {
                 height={36}
                 iconType="circle"
               />
-              <ReferenceLine y={0} stroke="#475569" />
+              <ReferenceLine y={0} stroke="rgb(148, 163, 184)" className="opacity-20" />
               <Line
                 type="monotone"
                 dataKey="deposits"

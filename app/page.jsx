@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import TransactionsTable from '@/components/TransactionsTable'
-import TransactionsChart from '@/components/TransactionsChart'
+//import TransactionsChart from '@/components/TransactionsChart'
 import { CreditCard, Loader2 } from 'lucide-react'
-import TransactionsAnalysis from '@/components/TransactionsAnalysis'
+//import TransactionsAnalysis from '@/components/TransactionsAnalysis'
+import TransactionsVisualization from '@/components/TransactionsVisualization'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
@@ -192,13 +193,9 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-        <div className="mb-8">
-          <TransactionsAnalysis  />
-        </div>
-        {/* Gráfico de transacciones */}
-        <div className="mb-8">
-          <TransactionsChart />
-        </div>
+        <div className="container mx-auto p-4">
+    <TransactionsVisualization />
+  </div>
 
         {/* Tabla de transacciones */}
         <div>

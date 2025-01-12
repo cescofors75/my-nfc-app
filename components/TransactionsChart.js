@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createChart } from 'lightweight-charts'
 import { supabase } from '@/lib/supabaseClient'
 import { LineChart, BarChart3 } from 'lucide-react'
+
 const TIME_RANGES = {
   '30MIN': '30 minutos',
   '1H': '1 hora',
@@ -31,28 +32,26 @@ export default function TransactionsChart() {
   const accumulatedSeriesRef = useRef(null)
   const channelRef = useRef(null)
 
-  const processTransactions = (transactions) => {
+  // Función mejorada para procesar transacciones
+  const processTransactions = useCallback((transactions) => {
+    console.log('📊 Procesando transacciones:', transactions.length)
     const timeMap = new Map()
     let runningIncomes = 0
     let runningExpenses = 0
     
-    // Filtrar las transacciones según el rango de tiempo actual
-    const filteredTransactions = transactions.filter(shouldIncludeTransaction)
+    const filteredTransactions = transactions
+      .filter(shouldIncludeTransaction)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     
-    // Ordenar las transacciones por fecha
-    filteredTransactions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    console.log('🔍 Transacciones filtradas:', filteredTransactions.length)
     
     filteredTransactions.forEach(t => {
-      const timestamp = new Date(t.created_at).getTime() / 1000
+      const timestamp = Math.floor(new Date(t.created_at).getTime() / 1000)
       if (!timeMap.has(timestamp)) {
-        timeMap.set(timestamp, { 
-          incomes: 0, 
-          expenses: 0, 
-          accumulated: 0 
-        })
+        timeMap.set(timestamp, { incomes: 0, expenses: 0, accumulated: 0 })
       }
       
-      const amount = Number(t.amount)
+      const amount = Number(t.amount || 0)
       if (t.type === 'DEPOSIT') {
         timeMap.get(timestamp).incomes += amount
         runningIncomes += amount
@@ -61,80 +60,145 @@ export default function TransactionsChart() {
         runningExpenses += amount
       }
       
-      // Actualizar el valor acumulado para este punto en el tiempo
       timeMap.get(timestamp).accumulated = runningIncomes - runningExpenses
     })
 
-    // Actualizar las estadísticas con los totales
+    const sortedTimes = Array.from(timeMap.entries()).sort((a, b) => a[0] - b[0])
+    
+    console.log('💰 Totales actualizados:', { runningIncomes, runningExpenses })
     setStats({
       totalIncomes: runningIncomes,
       totalExpenses: runningExpenses,
       accumulated: runningIncomes - runningExpenses
     })
 
-    const sortedTimes = Array.from(timeMap.entries()).sort((a, b) => a[0] - b[0])
-    
     return {
-      incomes: sortedTimes.map(([time, data]) => ({
-        time,
-        value: data.incomes
-      })),
-      expenses: sortedTimes.map(([time, data]) => ({
-        time,
-        value: data.expenses
-      })),
-      accumulated: sortedTimes.map(([time, data]) => ({
-        time,
-        value: data.accumulated
-      }))
+      incomes: sortedTimes.map(([time, data]) => ({ time, value: data.incomes })),
+      expenses: sortedTimes.map(([time, data]) => ({ time, value: data.expenses })),
+      accumulated: sortedTimes.map(([time, data]) => ({ time, value: data.accumulated }))
     }
-  }
+  }, [])
 
-  const fetchTransactions = async () => {
-    let query = supabase
-      .from('transactions')
-      .select('*')
-      .order('created_at', { ascending: true })
+  // Función mejorada para obtener transacciones
+  const fetchTransactions = useCallback(async () => {
+    console.log('🔄 Obteniendo transacciones para:', timeRange)
+    try {
+      let query = supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: true })
 
+      const now = new Date()
+      let startTime
+
+      switch (timeRange) {
+        case '30MIN':
+          startTime = new Date(now - 30 * 60 * 1000)
+          break
+        case '1H':
+          startTime = new Date(now - 60 * 60 * 1000)
+          break
+        case '24H':
+          startTime = new Date(now - 24 * 60 * 60 * 1000)
+          break
+        case '7D':
+          startTime = new Date(now - 7 * 24 * 60 * 60 * 1000)
+          break
+        case '30D':
+          startTime = new Date(now - 30 * 24 * 60 * 60 * 1000)
+          break
+      }
+
+      if (startTime) {
+        query = query.gte('created_at', startTime.toISOString())
+      }
+
+      const { data, error } = await query
+      
+      if (error) {
+        console.error('❌ Error obteniendo transacciones:', error)
+        return []
+      }
+
+      console.log('✅ Transacciones obtenidas:', data?.length)
+      return data || []
+    } catch (error) {
+      console.error('❌ Error inesperado:', error)
+      return []
+    }
+  }, [timeRange])
+
+  // Función para verificar si una transacción debe incluirse
+  const shouldIncludeTransaction = useCallback((transaction) => {
+    if (!transaction?.created_at || timeRange === 'ALL') return true
+
+    const transactionDate = new Date(transaction.created_at)
     const now = new Date()
-    let startTime
-
+    
     switch (timeRange) {
       case '30MIN':
-        startTime = new Date(now - 30 * 60 * 1000)
-        break
+        return now - transactionDate <= 30 * 60 * 1000
       case '1H':
-        startTime = new Date(now - 60 * 60 * 1000)
-        break
+        return now - transactionDate <= 60 * 60 * 1000
       case '24H':
-        startTime = new Date(now - 24 * 60 * 60 * 1000)
-        break
+        return now - transactionDate <= 24 * 60 * 60 * 1000
       case '7D':
-        startTime = new Date(now - 7 * 24 * 60 * 60 * 1000)
-        break
+        return now - transactionDate <= 7 * 24 * 60 * 60 * 1000
       case '30D':
-        startTime = new Date(now - 30 * 24 * 60 * 60 * 1000)
-        break
+        return now - transactionDate <= 30 * 24 * 60 * 60 * 1000
       default:
-        break
+        return true
     }
+  }, [timeRange])
 
-    if (startTime) {
-      query = query.gte('created_at', startTime.toISOString())
-    }
+  // Manejador mejorado de transacciones en tiempo real
+  const handleRealtimeTransaction = useCallback((payload) => {
+    console.log('🔔 Evento realtime recibido:', payload)
+    
+    setTransactions(currentTransactions => {
+      const { eventType, new: newTransaction, old: oldTransaction } = payload
+      let updatedTransactions = [...currentTransactions]
 
-    const { data } = await query
-    return data || []
-  }
+      switch (eventType) {
+        case 'INSERT':
+          if (shouldIncludeTransaction(newTransaction)) {
+            console.log('➕ Nueva transacción insertada:', newTransaction)
+            updatedTransactions = [...updatedTransactions, newTransaction]
+          }
+          break
 
-  const initializeChart = () => {
+        case 'UPDATE':
+          console.log('✏️ Transacción actualizada:', newTransaction)
+          updatedTransactions = updatedTransactions.map(t => 
+            t.id === newTransaction.id ? newTransaction : t
+          )
+          break
+
+        case 'DELETE':
+          console.log('❌ Transacción eliminada:', oldTransaction)
+          updatedTransactions = updatedTransactions.filter(t => 
+            t.id !== oldTransaction.id
+          )
+          break
+      }
+
+      updatedTransactions.sort((a, b) => 
+        new Date(a.created_at) - new Date(b.created_at)
+      )
+
+      return updatedTransactions
+    })
+  }, [shouldIncludeTransaction])
+
+  // Inicialización y configuración del gráfico
+  const initializeChart = useCallback(() => {
     if (!chartContainerRef.current) return
 
-    // Limpiar el gráfico anterior si existe
     if (chartRef.current) {
       chartRef.current.remove()
     }
 
+    console.log('📈 Inicializando gráfico')
     chartRef.current = createChart(chartContainerRef.current, {
       height: 400,
       layout: {
@@ -147,10 +211,7 @@ export default function TransactionsChart() {
       },
       rightPriceScale: {
         borderColor: 'rgba(156, 163, 175, 0.1)',
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.1,
-        },
+        scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       timeScale: {
         borderColor: 'rgba(156, 163, 175, 0.1)',
@@ -162,6 +223,7 @@ export default function TransactionsChart() {
       },
     })
 
+    // Configurar series
     incomesSeriesRef.current = chartRef.current.addLineSeries({
       color: '#10B981',
       lineWidth: 2,
@@ -186,7 +248,7 @@ export default function TransactionsChart() {
     })
 
     const handleResize = () => {
-      chartRef.current.applyOptions({
+      chartRef.current?.applyOptions({
         width: chartContainerRef.current.clientWidth,
       })
     }
@@ -194,84 +256,36 @@ export default function TransactionsChart() {
     window.addEventListener('resize', handleResize)
     handleResize()
 
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }
+    return () => window.removeEventListener('resize', handleResize)
+  }, [showAccumulated, timeRange])
 
-  const updateChart = (transactions) => {
-    if (!transactions.length || !incomesSeriesRef.current || !expensesSeriesRef.current || !accumulatedSeriesRef.current) return
+  // Actualización del gráfico
+  const updateChart = useCallback((transactions) => {
+    if (!transactions.length || !incomesSeriesRef.current || !expensesSeriesRef.current || !accumulatedSeriesRef.current) {
+      console.log('⚠️ No se puede actualizar el gráfico:', {
+        transactionsLength: transactions.length,
+        hasIncomesSeries: !!incomesSeriesRef.current,
+        hasExpensesSeries: !!expensesSeriesRef.current,
+        hasAccumulatedSeries: !!accumulatedSeriesRef.current
+      })
+      return
+    }
     
+    console.log('🔄 Actualizando gráfico')
     const { incomes, expenses, accumulated } = processTransactions(transactions)
     
     incomesSeriesRef.current.setData(incomes)
     expensesSeriesRef.current.setData(expenses)
     accumulatedSeriesRef.current.setData(accumulated)
 
-    // Actualizar la visibilidad de las series
     incomesSeriesRef.current.applyOptions({ visible: !showAccumulated })
     expensesSeriesRef.current.applyOptions({ visible: !showAccumulated })
     accumulatedSeriesRef.current.applyOptions({ visible: showAccumulated })
-  }
+  }, [processTransactions, showAccumulated])
 
-  const handleRealtimeTransaction = (payload) => {
-    const { eventType, new: newTransaction, old: oldTransaction } = payload
-    
-    setTransactions(currentTransactions => {
-      let updatedTransactions = [...currentTransactions]
-
-      switch (eventType) {
-        case 'INSERT':
-          if (shouldIncludeTransaction(newTransaction)) {
-            updatedTransactions = [...updatedTransactions, newTransaction]
-          }
-          break
-
-        case 'UPDATE':
-          updatedTransactions = updatedTransactions.map(t => 
-            t.id === newTransaction.id ? newTransaction : t
-          )
-          break
-
-        case 'DELETE':
-          updatedTransactions = updatedTransactions.filter(t => 
-            t.id !== oldTransaction.id
-          )
-          break
-      }
-
-      updatedTransactions.sort((a, b) => 
-        new Date(a.created_at) - new Date(b.created_at)
-      )
-
-      return updatedTransactions
-    })
-  }
-
-  const shouldIncludeTransaction = (transaction) => {
-    if (timeRange === 'ALL') return true
-
-    const transactionDate = new Date(transaction.created_at)
-    const now = new Date()
-    
-    switch (timeRange) {
-      case '30MIN':
-        return now - transactionDate <= 30 * 60 * 1000
-      case '1H':
-        return now - transactionDate <= 60 * 60 * 1000
-      case '24H':
-        return now - transactionDate <= 24 * 60 * 60 * 1000
-      case '7D':
-        return now - transactionDate <= 7 * 24 * 60 * 60 * 1000
-      case '30D':
-        return now - transactionDate <= 30 * 24 * 60 * 60 * 1000
-      default:
-        return true
-    }
-  }
-
-  // Efecto para inicializar el gráfico y manejar la suscripción a tiempo real
+  // Efecto para la inicialización y suscripción realtime
   useEffect(() => {
+    console.log('🔄 Inicializando componente')
     const cleanup = initializeChart()
     
     const loadInitialData = async () => {
@@ -279,35 +293,35 @@ export default function TransactionsChart() {
       setTransactions(transactions)
     }
 
+    // Configurar canal realtime
     channelRef.current = supabase
       .channel('transactions-realtime')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-        },
+        { event: '*', schema: 'public', table: 'transactions' },
         handleRealtimeTransaction
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Estado de la suscripción:', status)
+      })
 
     loadInitialData()
 
     return () => {
       cleanup?.()
       if (channelRef.current) {
+        console.log('🔌 Desconectando canal realtime')
         supabase.removeChannel(channelRef.current)
       }
     }
-  }, [timeRange, showAccumulated])
+  }, [fetchTransactions, handleRealtimeTransaction, initializeChart])
 
-  // Efecto para actualizar el gráfico cuando cambian las transacciones o el timeRange
+  // Efecto para actualizar el gráfico
   useEffect(() => {
     if (transactions.length) {
       updateChart(transactions)
     }
-  }, [transactions, showAccumulated, timeRange])
+  }, [transactions, updateChart])
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -341,25 +355,25 @@ export default function TransactionsChart() {
               Análisis de Transacciones
             </h2>
             <button
-  onClick={() => setShowAccumulated(!showAccumulated)}
-  className={`px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-    showAccumulated
-      ? 'bg-blue-500 text-white'
-      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-  }`}
->
-  {showAccumulated ? (
-    <>
-      <BarChart3 className="w-4 h-4" />
-      <span className="hidden sm:inline">Ver Individual</span>
-    </>
-  ) : (
-    <>
-      <LineChart className="w-4 h-4" />
-      <span className="hidden sm:inline">Ver Acumulado</span>
-    </>
-  )}
-</button>
+              onClick={() => setShowAccumulated(!showAccumulated)}
+              className={`px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                showAccumulated
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              {showAccumulated ? (
+                <>
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Ver Individual</span>
+                </>
+              ) : (
+                <>
+                  <LineChart className="w-4 h-4" />
+                  <span className="hidden sm:inline">Ver Acumulado</span>
+                </>
+              )}
+            </button>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -381,7 +395,7 @@ export default function TransactionsChart() {
       </div>
 
       {/* Gráfico */}
-      <div ref={chartContainerRef} />
+      <div ref={chartContainerRef} className="w-full" />
     </div>
   )
 }

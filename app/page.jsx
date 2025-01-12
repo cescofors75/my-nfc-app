@@ -5,71 +5,78 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import TransactionsTable from '@/components/TransactionsTable'
 import TransactionsChart from '@/components/TransactionsChart'
+import { CreditCard, Loader2 } from 'lucide-react'
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
   const [wristbands, setWristbands] = useState([])
   const [transactions, setTransactions] = useState([])
-  const [transactionFilter, setTransactionFilter] = useState('ALL') // 'ALL', 'DEPOSIT', 'PURCHASE'
+  const [transactionFilter, setTransactionFilter] = useState('ALL')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadWristbands()
-    loadTransactions()
+    console.log('🔄 Iniciando carga de datos y suscripciones realtime')
+    
+    const loadInitialData = async () => {
+      await Promise.all([loadWristbands(), loadTransactions()])
+      setLoading(false)
+    }
 
-    // Suscribirse a cambios en tiempo real de pulseras
     const wristbandsChannel = supabase
       .channel('realtime-wristbands')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'wristbands',
-        },
-        () => {
+        { event: '*', schema: 'public', table: 'wristbands' },
+        (payload) => {
+          console.log('🔔 Cambio en pulseras detectado:', payload)
           loadWristbands()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Estado de suscripción wristbands:', status)
+      })
 
-    // Suscribirse a cambios en tiempo real de transacciones
     const transactionsChannel = supabase
       .channel('realtime-transactions')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-        },
-        () => {
+        { event: '*', schema: 'public', table: 'transactions' },
+        (payload) => {
+          console.log('🔔 Nueva transacción detectada:', payload)
           loadTransactions()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Estado de suscripción transactions:', status)
+      })
+
+    loadInitialData()
 
     return () => {
+      console.log('🔌 Limpiando suscripciones')
       supabase.removeChannel(wristbandsChannel)
       supabase.removeChannel(transactionsChannel)
     }
   }, [])
 
   const loadWristbands = async () => {
+    console.log('📍 Cargando pulseras...')
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('wristbands')
         .select('*')
         .order('created_at', { ascending: false })
       
+      if (error) throw error
+      console.log('✅ Pulseras cargadas:', data?.length)
       setWristbands(data || [])
     } catch (error) {
-      console.error('Error loading wristbands:', error)
-    } finally {
-      setLoading(false)
+      console.error('❌ Error cargando pulseras:', error)
     }
   }
 
   const loadTransactions = async () => {
+    console.log('📍 Cargando transacciones...')
     try {
       let query = supabase
         .from('transactions')
@@ -87,10 +94,26 @@ export default function DashboardPage() {
         query = query.eq('type', transactionFilter)
       }
 
-      const { data } = await query
+      const { data, error } = await query
+      if (error) throw error
+      
+      console.log('✅ Transacciones cargadas:', data?.length)
       setTransactions(data || [])
+      
+      const totals = (data || []).reduce((acc, transaction) => {
+        const amount = Number(transaction.amount) || 0
+        if (transaction.type === 'DEPOSIT') {
+          acc.totalIncome += amount
+        } else {
+          acc.totalExpenses += amount
+        }
+        acc.totalBalance = acc.totalIncome - acc.totalExpenses
+        return acc
+      }, { totalIncome: 0, totalExpenses: 0, totalBalance: 0 })
+
+      setStats(totals)
     } catch (error) {
-      console.error('Error loading transactions:', error)
+      console.error('❌ Error cargando transacciones:', error)
     }
   }
 
@@ -100,73 +123,85 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+        <p className="text-gray-600 dark:text-gray-400">Cargando dashboard...</p>
       </div>
     )
   }
 
-  // Calcular totales
-  const totals = transactions.reduce((acc, transaction) => {
-    if (transaction.type === 'DEPOSIT') {
-      acc.deposits += transaction.amount
-    } else {
-      acc.purchases += transaction.amount
-    }
-    return acc
-  }, { deposits: 0, purchases: 0 })
-
   return (
-    
-    
-  
-    <div className="max-w-7xl mx-auto p-6">
-      {/* Resumen y Acciones */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard NFC</h1>
-          <p className="text-gray-600">
-            {wristbands.length} pulseras activas
-          </p>
-        </div>
-        
-      </div>
-
-
-      {/* Lista de Pulseras */}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {wristbands.map((wristband) => (
-          <Link
-            key={wristband.id}
-            href={`/wristbands/${wristband.id}`}
-            className="block dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-2">{wristband.owner_name}</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">ID NFC:</span>
-                  <span className="font-mono">{wristband.nfc_uid}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Saldo:</span>
-                  <span className="font-bold text-green-600">
-                    {wristband.balance.toFixed(2)}€
-                  </span>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Dashboard NFC
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {wristbands.length} pulseras activas
+              </p>
             </div>
-          </Link>
-        ))}
+          </div>
+        </div>
       </div>
- <TransactionsChart />
- <br/>
- <TransactionsTable transactions={transactions} />
-      {/* Transacciones en Tiempo Real */}
-      
+
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Grid de pulseras */}
+        <div className="mb-8">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Pulseras Activas
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {wristbands.map((wristband) => (
+              <Link
+                key={wristband.id}
+                href={`/wristbands/\${wristband.id}`}
+              >
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      {wristband.owner_name}
+                    </h3>
+                    <CreditCard className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">ID NFC:</span>
+                      <span className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                        {wristband.nfc_uid}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Saldo:</span>
+                      <span className={`text-sm font-semibold ${
+                        wristband.balance >= 0 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {wristband.balance.toFixed(2)}€
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Gráfico de transacciones */}
+        <div className="mb-8">
+          <TransactionsChart />
+        </div>
+
+        {/* Tabla de transacciones */}
+        <div>
+          <TransactionsTable transactions={transactions} />
+        </div>
+      </div>
     </div>
-  
   )
 }
